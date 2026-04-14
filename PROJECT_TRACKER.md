@@ -1,4 +1,4 @@
-# OpsGrid / Defter - Is Takip Dokumani
+#  Defter - Is Takip Dokumani
 
 ## Bu Is Aslinda Ne?
 

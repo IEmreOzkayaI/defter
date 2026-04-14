@@ -1,0 +1,59 @@
+import { useEffect, useMemo } from 'react';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
+
+import { DemoApp } from '@/screens/demo/app/demo-app-views';
+import { useLandingUser } from '@/shared/context/landing-user.context';
+import type { DemoMode, DemoSetupPayload } from '@/shared/types/demo.types';
+import { clearPersistedDemoSetup, readPersistedDemoSetup } from '@/shared/utils/demo-setup-storage.util';
+
+function modeFromParam(p: string | undefined): DemoMode {
+  return p === 'pos' ? 'pos' : 'temel';
+}
+
+/**
+ * Router state öncelikli; yoksa sessionStorage yalnızca URL modu eşleşiyorsa.
+ * readPersistedDemoSetup() her çağrıda yeni nesne döndüğü için sonucu useMemo ile sabitliyoruz
+ * (gereksiz re-render / effect tetiklenmesi önlenir).
+ */
+export default function DemoAppScreen() {
+  const navigate = useNavigate();
+  const { mode: modeParam } = useParams();
+  const location = useLocation();
+  const mode = modeFromParam(modeParam);
+  const { landingUser, setLandingUser } = useLandingUser();
+
+  const setup = useMemo((): DemoSetupPayload | undefined => {
+    const fromState = (location.state as { setup?: DemoSetupPayload } | undefined)?.setup;
+    if (fromState) return fromState;
+    const persisted = readPersistedDemoSetup();
+    if (persisted?.mode === mode) return persisted.setup;
+    return undefined;
+  }, [location.key, location.pathname, location.state, mode]);
+
+  useEffect(() => {
+    if (setup) return;
+    navigate(`/demo/onboarding/${mode === 'pos' ? 'pos' : 'temel'}`, { replace: true });
+  }, [setup, navigate, mode]);
+
+  if (!setup) {
+    return null;
+  }
+
+  const demoKey = `${mode}:${setup.sector}:${setup.businessName}:${setup.sessionLabel}`;
+
+  const leaveDemo = () => {
+    clearPersistedDemoSetup();
+    navigate('/', { replace: true });
+  };
+
+  return (
+    <DemoApp
+      key={demoKey}
+      mode={mode}
+      onBack={leaveDemo}
+      setup={setup}
+      landingUser={landingUser}
+      onUserChange={setLandingUser}
+    />
+  );
+}

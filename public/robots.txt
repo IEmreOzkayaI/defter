@@ -1,0 +1,8 @@
+# Üretimde Sitemap satırındaki alan adını güncelleyin (README — SEO).
+User-agent: *
+Allow: /
+
+# Demo akışları ince içerik / dönüşüm sayfası değil; taramayı sınırla
+Disallow: /demo/
+
+Sitemap: https://defter.app/sitemap.xml

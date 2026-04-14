@@ -1,0 +1,19 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_SITE_URL: ${VITE_SITE_URL:-}
+        VITE_LANDING_HERO_VIDEO: ${VITE_LANDING_HERO_VIDEO:-}
+        VITE_ADMIN_USERNAME: ${VITE_ADMIN_USERNAME:-}
+        VITE_ADMIN_PASSWORD: ${VITE_ADMIN_PASSWORD:-}
+        VITE_ADMIN_LOGIN_MOCK: ${VITE_ADMIN_LOGIN_MOCK:-}
+        VITE_ADMIN_MOCK_DATA: ${VITE_ADMIN_MOCK_DATA:-}
+    image: defter:local
+    ports:
+      - '3000:3000'
+    env_file:
+      - .env
+    environment:
+      - IFRAME_ALLOWED_ORIGIN=${IFRAME_ALLOWED_ORIGIN:-}

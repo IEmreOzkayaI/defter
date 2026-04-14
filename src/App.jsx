@@ -286,7 +286,7 @@ function DemoExperience({ mode, onBack, landingUser, onUserChange }) {
 }
 
 function LandingLoginModal({ onClose, onSuccess }) {
-  const [email, setEmail] = useState("demo@opsgrid.app");
+  const [email, setEmail] = useState("demo@defter.app");
   const [password, setPassword] = useState("123456");
   const canLogin = email.trim() && password.trim().length >= 4;
 
@@ -322,7 +322,7 @@ function LandingLoginModal({ onClose, onSuccess }) {
 function AppOnboarding({ onBack, onComplete }) {
   const [step, setStep] = useState(0);
   const [sector, setSector] = useState("hamam");
-  const [businessName, setBusinessName] = useState("OpsGrid Demo Şubesi");
+  const [businessName, setBusinessName] = useState("Defter Demo Şubesi");
   const [sessionLabel, setSessionLabel] = useState("Kabine");
   const current = APP_ONBOARD_STEPS[step];
   const preset = getTemplatePreset(sector);
@@ -335,7 +335,7 @@ function AppOnboarding({ onBack, onComplete }) {
     }
     onComplete({
       sector,
-      businessName: businessName.trim() || "OpsGrid Demo Şubesi",
+      businessName: businessName.trim() || "Defter Demo Şubesi",
       sessionLabel: sessionLabel.trim() || preset.resourceLabel,
       template: preset,
     });
@@ -1001,7 +1001,7 @@ function DemoApp({ mode, onBack, setup, landingUser, onUserChange }) {
   const [serviceCatalog, setServiceCatalog] = useState(() => template.services.map((s) => ({ kdv: 10, active: true, ...s })));
   const [serviceCategories, setServiceCategories] = useState(template.categories);
   const [profile, setProfile] = useState(() => ({
-    email: landingUser?.email || "demo@opsgrid.app",
+    email: landingUser?.email || "demo@defter.app",
     phone: landingUser?.phone || "",
     sector: setup?.sector || landingUser?.sector || sectorId,
     password: "",

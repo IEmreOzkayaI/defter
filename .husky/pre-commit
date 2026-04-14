@@ -1,0 +1,47 @@
+#!/bin/bash
+
+# Define colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+abort() {
+    echo -e "${RED}❌ Pre-commit operation aborted.${NC}"
+    echo
+    exit 1
+}
+
+if [ "$HUSKY_SKIP" = "1" ]; then
+  exit 0
+fi
+
+echo -e "${YELLOW}🔍 File-Folder naming lint check starting...${NC}"
+echo
+pnpm lint:names || abort
+echo -e "${GREEN}✅ File-Folder naming lint check completed.${NC}"
+echo
+
+echo -e "${YELLOW}🔍 Lint check starting...${NC}"
+echo
+pnpm lint || abort
+echo -e "${GREEN}✅ Lint check completed.${NC}"
+echo
+
+echo -e "${YELLOW}💅 Format check starting...${NC}"
+echo
+pnpm format:fix
+echo -e "${GREEN}✅ Format check completed.${NC}"
+echo
+
+echo -e "${YELLOW}💅 Type check starting...${NC}"
+echo
+pnpm type:check
+echo -e "${GREEN}✅ Type check completed.${NC}"
+echo
+
+echo -e "${YELLOW}🔎 Branch name validation starting...${NC}"
+echo
+npx --no -- validate-branch-name || abort
+echo -e "${GREEN}✅ Branch name validation completed.${NC}"
+echo
