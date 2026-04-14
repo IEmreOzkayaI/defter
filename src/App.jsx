@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 
 /* ═══════════════════════════════════════════════════════
    DEFTER v2 — Full Landing + Dual Demo + Onboarding
@@ -127,6 +127,75 @@ const getTemplatePreset = (sectorId) => {
     services: preset.services.map((s) => ({ ...s })),
   };
 };
+
+function useMediaQuery(query) {
+  const [matches, setMatches] = useState(() => (typeof window !== "undefined" ? window.matchMedia(query).matches : false));
+  useEffect(() => {
+    const mq = window.matchMedia(query);
+    const on = () => setMatches(mq.matches);
+    on();
+    if (mq.addEventListener) {
+      mq.addEventListener("change", on);
+      return () => mq.removeEventListener("change", on);
+    }
+    mq.addListener(on);
+    return () => mq.removeListener(on);
+  }, [query]);
+  return matches;
+}
+
+/** Demo POS mobil düzeni: therma benzeri liste↔detay. Sadece innerWidth güvenilir değil (ör. dar panel + geniş window, visualViewport, tablet ~768px). */
+const DEMO_MOBILE_BREAKPOINT = 1024;
+
+function readCompactViewportWidth() {
+  if (typeof window === "undefined") return 1920;
+  const el = document.documentElement;
+  const vv = window.visualViewport;
+  return Math.min(
+    window.innerWidth,
+    el.clientWidth || window.innerWidth,
+    vv?.width ?? window.innerWidth,
+  );
+}
+
+function isDemoMobileLayout() {
+  if (typeof window === "undefined") return false;
+  const w = readCompactViewportWidth();
+  const mq = window.matchMedia(`(max-width: ${DEMO_MOBILE_BREAKPOINT - 1}px)`).matches;
+  return mq || w < DEMO_MOBILE_BREAKPOINT;
+}
+
+function useThermaMobile() {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined" ? isDemoMobileLayout() : false,
+  );
+
+  useLayoutEffect(() => {
+    const sync = () => setIsMobile(isDemoMobileLayout());
+    sync();
+    window.addEventListener("resize", sync, { passive: true });
+    window.addEventListener("orientationchange", sync);
+    const vv = window.visualViewport;
+    vv?.addEventListener("resize", sync);
+    vv?.addEventListener("scroll", sync);
+    const ro =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(() => sync())
+        : null;
+    ro?.observe(document.documentElement);
+    const root = document.getElementById("root");
+    if (root) ro?.observe(root);
+    return () => {
+      window.removeEventListener("resize", sync);
+      window.removeEventListener("orientationchange", sync);
+      vv?.removeEventListener("resize", sync);
+      vv?.removeEventListener("scroll", sync);
+      ro?.disconnect();
+    };
+  }, []);
+
+  return isMobile;
+}
 
 /** Oturum listesi sekmesi: şablon kaynak etiketi + sektöre göre (sabit "MASALAR" yok). */
 function getSessionsNavLabel(resourceLabel, sectorId) {
@@ -257,6 +326,7 @@ function AppOnboarding({ onBack, onComplete }) {
   const [sessionLabel, setSessionLabel] = useState("Kabine");
   const current = APP_ONBOARD_STEPS[step];
   const preset = getTemplatePreset(sector);
+  const obNarrow = useMediaQuery("(max-width: 640px)");
 
   const next = () => {
     if (step < APP_ONBOARD_STEPS.length - 1) {
@@ -272,19 +342,19 @@ function AppOnboarding({ onBack, onComplete }) {
   };
 
   return (
-    <div style={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: C.bg, fontFamily: sans, padding: 16 }}>
-      <div style={{ width: "100%", maxWidth: 720, background: C.card, border: `2px solid ${C.dark}`, borderRadius: 14, padding: 28 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-          <div>
+    <div style={{ minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: C.bg, fontFamily: sans, padding: "max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left))" }}>
+      <div style={{ width: "100%", maxWidth: 720, background: C.card, border: `2px solid ${C.dark}`, borderRadius: 14, padding: "clamp(16px, 4vw, 28px)", maxHeight: "min(100dvh - 24px, 900px)", overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 18, flexWrap: obNarrow ? "wrap" : "nowrap" }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 11, color: C.light, letterSpacing: 1.5, fontFamily: mono, marginBottom: 6 }}>ONBOARDING {step + 1}/{APP_ONBOARD_STEPS.length}</div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: C.dark }}>{current.title}</div>
-            <div style={{ fontSize: 13, color: C.mid, marginTop: 4 }}>{current.desc}</div>
+            <div style={{ fontSize: "clamp(18px, 4.5vw, 24px)", fontWeight: 700, color: C.dark, lineHeight: 1.2 }}>{current.title}</div>
+            <div style={{ fontSize: 13, color: C.mid, marginTop: 6, lineHeight: 1.45 }}>{current.desc}</div>
           </div>
-          <button onClick={onBack} style={{ border: "none", background: "none", fontSize: 20, color: C.light, cursor: "pointer" }}>←</button>
+          <button type="button" onClick={onBack} style={{ border: "none", background: "none", fontSize: 22, color: C.light, cursor: "pointer", flexShrink: 0, lineHeight: 1, padding: 4 }} aria-label="Geri">←</button>
         </div>
 
         {current.id === "sector" && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 140px), 1fr))", gap: 10 }}>
             {SECTORS.map((s) => (
               <button
                 key={s.id}
@@ -318,18 +388,18 @@ function AppOnboarding({ onBack, onComplete }) {
         {current.id === "ready" && (
           <div style={{ border: bd, borderRadius: 10, padding: 16, background: C.bg }}>
             <div style={{ fontSize: 12, color: C.mid, marginBottom: 10 }}>Seçilen şablon ile otomatik yüklenecek:</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-              <div style={{ fontSize: 13, color: C.dark }}>• {preset.categories.length} kategori</div>
-              <div style={{ fontSize: 13, color: C.dark }}>• {preset.services.length} hizmet</div>
-              <div style={{ fontSize: 13, color: C.dark }}>• Session etiketi: {sessionLabel}</div>
-              <div style={{ fontSize: 13, color: C.dark }}>• Kaynak tipi: {preset.resourceLabel}</div>
+            <div style={{ display: "grid", gridTemplateColumns: obNarrow ? "1fr" : "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
+              <div style={{ fontSize: 13, color: C.dark, wordBreak: "break-word" }}>• {preset.categories.length} kategori</div>
+              <div style={{ fontSize: 13, color: C.dark, wordBreak: "break-word" }}>• {preset.services.length} hizmet</div>
+              <div style={{ fontSize: 13, color: C.dark, wordBreak: "break-word" }}>• Session etiketi: {sessionLabel}</div>
+              <div style={{ fontSize: 13, color: C.dark, wordBreak: "break-word" }}>• Kaynak tipi: {preset.resourceLabel}</div>
             </div>
           </div>
         )}
 
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 20 }}>
-          <button onClick={() => setStep((p) => Math.max(0, p - 1))} disabled={step === 0} style={{ padding: "10px 16px", borderRadius: 6, border: bd, background: "transparent", color: step === 0 ? C.light : C.dark, cursor: step === 0 ? "not-allowed" : "pointer" }}>Geri</button>
-          <button onClick={next} className="cta" style={{ padding: "10px 16px", borderRadius: 6, border: "none", background: C.dark, color: "#fff", fontWeight: 700, cursor: "pointer" }}>{step === APP_ONBOARD_STEPS.length - 1 ? "Uygulamayı Başlat" : "Devam Et"}</button>
+        <div style={{ display: "flex", flexDirection: obNarrow ? "column-reverse" : "row", justifyContent: "space-between", alignItems: obNarrow ? "stretch" : "center", marginTop: 20, gap: 10 }}>
+          <button type="button" onClick={() => setStep((p) => Math.max(0, p - 1))} disabled={step === 0} style={{ padding: "10px 16px", borderRadius: 6, border: bd, background: "transparent", color: step === 0 ? C.light : C.dark, cursor: step === 0 ? "not-allowed" : "pointer", width: obNarrow ? "100%" : undefined }}>Geri</button>
+          <button type="button" onClick={next} className="cta" style={{ padding: "12px 16px", borderRadius: 6, border: "none", background: C.dark, color: "#fff", fontWeight: 700, cursor: "pointer", width: obNarrow ? "100%" : undefined }}>{step === APP_ONBOARD_STEPS.length - 1 ? "Uygulamayı Başlat" : "Devam Et"}</button>
         </div>
       </div>
     </div>
@@ -643,21 +713,21 @@ function ContactModal({ onClose }) {
 /* ── DEMO PICKER ── */
 function DemoPickerModal({ onClose, onPick }) {
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(250,250,248,.92)", zIndex: 9000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, animation: "fadeIn .15s ease" }}>
-      <div style={{ background: C.card, border: `2px solid ${C.dark}`, borderRadius: 14, padding: 32, width: "100%", maxWidth: 480, animation: "fadeUp .2s ease", position: "relative" }}>
-        <button onClick={onClose} style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", fontSize: 20, color: C.light, cursor: "pointer" }}>×</button>
-        <div style={{ fontSize: 10, color: C.light, letterSpacing: 1.5, fontFamily: mono, marginBottom: 8 }}>DEMO SEÇ</div>
-        <div style={{ fontSize: 22, fontWeight: 700, color: C.dark, marginBottom: 4 }}>Hangi planı denemek istersiniz?</div>
-        <div style={{ fontSize: 13, color: C.mid, marginBottom: 24 }}>Demo verilerle dolu, istediğiniz gibi kurcalayın.</div>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(250,250,248,.92)", zIndex: 9000, display: "flex", alignItems: "center", justifyContent: "center", padding: "max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left))", animation: "fadeIn .15s ease", overflowY: "auto" }}>
+      <div style={{ background: C.card, border: `2px solid ${C.dark}`, borderRadius: 14, padding: "clamp(18px, 4vw, 32px)", width: "100%", maxWidth: 480, maxHeight: "min(92dvh, 720px)", overflowY: "auto", WebkitOverflowScrolling: "touch", animation: "fadeUp .2s ease", position: "relative", margin: "auto 0" }}>
+        <button type="button" onClick={onClose} style={{ position: "absolute", top: 12, right: 12, background: "none", border: "none", fontSize: 22, color: C.light, cursor: "pointer", padding: 8, lineHeight: 1 }} aria-label="Kapat">×</button>
+        <div style={{ fontSize: 10, color: C.light, letterSpacing: 1.5, fontFamily: mono, marginBottom: 8, paddingRight: 36 }}>DEMO SEÇ</div>
+        <div style={{ fontSize: "clamp(18px, 4vw, 22px)", fontWeight: 700, color: C.dark, marginBottom: 4, lineHeight: 1.2 }}>Hangi planı denemek istersiniz?</div>
+        <div style={{ fontSize: 13, color: C.mid, marginBottom: 20, lineHeight: 1.45 }}>Demo verilerle dolu, istediğiniz gibi kurcalayın.</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <button onClick={() => onPick("temel")} className="sc" style={{ padding: "18px 20px", borderRadius: 10, border: bd, background: C.bg, textAlign: "left", cursor: "pointer", transition: "all .15s" }}>
+          <button type="button" onClick={() => onPick("temel")} className="sc" style={{ padding: "16px 18px", borderRadius: 10, border: bd, background: C.bg, textAlign: "left", cursor: "pointer", transition: "all .15s", width: "100%" }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: C.dark, marginBottom: 3 }}>Temel</div>
-            <div style={{ fontSize: 12, color: C.mid }}>Oturum yönetimi, hizmetler, analitik — POS olmadan</div>
+            <div style={{ fontSize: 12, color: C.mid, lineHeight: 1.4 }}>Oturum yönetimi, hizmetler, analitik — POS olmadan</div>
           </button>
-          <button onClick={() => onPick("pos")} className="sc" style={{ padding: "18px 20px", borderRadius: 10, border: `2px solid ${C.dark}`, background: C.card, textAlign: "left", cursor: "pointer", transition: "all .15s", position: "relative" }}>
-            <div style={{ position: "absolute", top: -1, right: 16, background: C.dark, color: "#fff", padding: "3px 10px", borderRadius: "0 0 5px 5px", fontSize: 9, fontWeight: 600 }}>+ POS</div>
+          <button type="button" onClick={() => onPick("pos")} className="sc" style={{ padding: "16px 18px", paddingTop: 22, borderRadius: 10, border: `2px solid ${C.dark}`, background: C.card, textAlign: "left", cursor: "pointer", transition: "all .15s", position: "relative", width: "100%" }}>
+            <div style={{ position: "absolute", top: -1, right: 12, background: C.dark, color: "#fff", padding: "3px 10px", borderRadius: "0 0 5px 5px", fontSize: 9, fontWeight: 600 }}>+ POS</div>
             <div style={{ fontSize: 15, fontWeight: 700, color: C.dark, marginBottom: 3 }}>Temel + POS</div>
-            <div style={{ fontSize: 12, color: C.mid }}>Her şey dahil — POS cihaz yönetimi ve ödeme gönderme</div>
+            <div style={{ fontSize: 12, color: C.mid, lineHeight: 1.4 }}>Her şey dahil — POS cihaz yönetimi ve ödeme gönderme</div>
           </button>
         </div>
       </div>
@@ -667,9 +737,256 @@ function DemoPickerModal({ onClose, onPick }) {
 
 /* ═══════════════════════════════════════════════════════
    DEMO APP — Full functional with Temel / Temel+POS modes
+   Mobil: therma-pos benzeri liste ↔ detay + hizmet alt sheet
 ═══════════════════════════════════════════════════════ */
 let _sid = 100;
 const mkSess = (n) => ({ id: _sid++, name: n, items: [], createdAt: new Date(), closedAt: null, status: "open" });
+
+/** Alt sheet: hizmet seçimi (mobil detay) */
+function DemoServiceDrawer({ pickerCats, cat, setCat, filtered, onAddService, onClose }) {
+  return (
+    <>
+      <div role="presentation" onClick={onClose} onKeyDown={undefined} style={{ position: "fixed", inset: 0, zIndex: 7000, background: "rgba(0,0,0,0.28)", animation: "fadeIn .15s ease" }} />
+      <div
+        style={{
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          zIndex: 7001,
+          height: "min(80dvh, 560px)",
+          maxWidth: 480,
+          margin: "0 auto",
+          background: C.card,
+          borderRadius: "14px 14px 0 0",
+          border: bd,
+          borderBottom: "none",
+          display: "flex",
+          flexDirection: "column",
+          boxShadow: "0 -8px 40px rgba(0,0,0,.12)",
+          animation: "sheetUp .28s cubic-bezier(.32,.72,0,1)",
+          paddingBottom: "max(12px, env(safe-area-inset-bottom))",
+        }}
+      >
+        <div style={{ padding: "12px 16px 0", flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, marginBottom: 12 }} />
+          <div style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: C.dark }}>Hizmet Seç</span>
+            <button type="button" onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, color: C.light, lineHeight: 1, padding: "0 4px", cursor: "pointer" }}>×</button>
+          </div>
+        </div>
+        <div style={{ display: "flex", overflowX: "auto", borderBottom: bd, flexShrink: 0, WebkitOverflowScrolling: "touch" }}>
+          {pickerCats.map((c) => (
+            <button key={c.k} type="button" onClick={() => setCat(c.k)} style={{ padding: "9px 13px", fontSize: 11, fontWeight: 600, letterSpacing: 0.4, background: "transparent", border: "none", whiteSpace: "nowrap", borderBottom: cat === c.k ? `2px solid ${C.dark}` : "2px solid transparent", color: cat === c.k ? C.dark : C.light, cursor: "pointer" }}>
+              {c.l.toUpperCase()}
+            </button>
+          ))}
+        </div>
+        <div style={{ flex: 1, overflowY: "auto", minHeight: 0, WebkitOverflowScrolling: "touch" }}>
+          {filtered.map((svc) => (
+            <button key={svc.id} type="button" className="dr" onClick={() => onAddService(svc)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "13px 16px", border: "none", borderBottom: bd, background: C.card, textAlign: "left", cursor: "pointer" }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: C.dark }}>{svc.name}</div>
+                {svc.dur > 0 && <div style={{ fontSize: 11, color: C.light, marginTop: 2 }}>{svc.dur} dk</div>}
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 700, fontFamily: mono, color: C.dark }}>{fmt(svc.price)} ₺</div>
+              <div style={{ width: 30, height: 30, borderRadius: 5, background: C.dark, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, color: "#fff", flexShrink: 0 }}>+</div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
+/** Mobil oturum detayı: sepet + sabit alt bar + drawer tetikleyici */
+function DemoMobileSessionDetail({
+  active,
+  filtered,
+  cat,
+  setCat,
+  addItem,
+  changeQty,
+  posTarget,
+  setShowPosModal,
+  sending,
+  sentOk,
+  setConfirmId,
+  hasPos,
+  pickerCats,
+  qtyBtn,
+  sessionTotal,
+}) {
+  const [showDrawer, setShowDrawer] = useState(false);
+  const total = sessionTotal(active);
+
+  return (
+    <>
+      {showDrawer && (
+        <DemoServiceDrawer
+          pickerCats={pickerCats}
+          cat={cat}
+          setCat={setCat}
+          filtered={filtered}
+          onAddService={(svc) => addItem(svc)}
+          onClose={() => setShowDrawer(false)}
+        />
+      )}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden", background: C.card }}>
+        <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
+          {active.items.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "48px 20px", color: C.light, fontSize: 13, lineHeight: 1.5 }}>
+              <div style={{ fontSize: 28, marginBottom: 8, opacity: 0.35 }}>—</div>
+              Henüz hizmet yok
+              <div style={{ fontSize: 12, marginTop: 10 }}>Aşağıdan «Hizmet Ekle» ile başlayın.</div>
+            </div>
+          ) : (
+            active.items.map((item) => (
+              <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 16px", borderBottom: bd }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: C.dark }}>{item.name}</div>
+                  <div style={{ fontSize: 11, color: C.light, fontFamily: mono, marginTop: 2 }}>
+                    {fmt(item.price)} ₺{item.qty > 1 ? ` × ${item.qty} = ${fmt(item.price * item.qty)} ₺` : ""}
+                  </div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                  <button type="button" onClick={() => changeQty(item.id, -1)} style={qtyBtn}>
+                    −
+                  </button>
+                  <span style={{ fontSize: 13, fontWeight: 700, minWidth: 20, textAlign: "center", fontFamily: mono }}>{item.qty}</span>
+                  <button type="button" onClick={() => changeQty(item.id, 1)} style={qtyBtn}>
+                    +
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+        <div style={{ borderTop: bd, padding: "12px 16px", paddingBottom: "max(12px, env(safe-area-inset-bottom))", background: C.card, flexShrink: 0 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, paddingBottom: 10, borderBottom: bd }}>
+            <span style={{ fontSize: 11, color: C.light, letterSpacing: 0.8, fontFamily: mono }}>TOPLAM</span>
+            <span style={{ fontSize: 22, fontWeight: 700, fontFamily: mono, color: C.dark }}>{fmt(total)} ₺</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowDrawer(true)}
+            style={{
+              width: "100%",
+              marginBottom: 10,
+              padding: "11px 14px",
+              borderRadius: 6,
+              border: `1px dashed ${C.border}`,
+              background: C.accentSoft,
+              fontSize: 12,
+              fontWeight: 700,
+              color: C.dark,
+              letterSpacing: 0.3,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              cursor: "pointer",
+            }}
+          >
+            <span style={{ fontSize: 16 }}>+</span> Hizmet Ekle
+          </button>
+          {hasPos ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setShowPosModal(true)}
+                style={{
+                  width: "100%",
+                  marginBottom: 10,
+                  padding: "10px 14px",
+                  borderRadius: 5,
+                  border: `1px solid ${posTarget ? C.dark : C.border}`,
+                  background: posTarget ? C.accentSoft : "transparent",
+                  textAlign: "left",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  cursor: "pointer",
+                }}
+              >
+                <div style={{ width: 7, height: 7, borderRadius: "50%", background: posTarget ? C.green : C.light, flexShrink: 0 }} />
+                <span style={{ fontSize: 12, fontWeight: 600, flex: 1, color: C.dark, minWidth: 0 }}>{posTarget ? posTarget.name : "POS cihazı seç..."}</span>
+                {posTarget && <span style={{ fontSize: 11, color: C.light, flexShrink: 0 }}>{posTarget.loc}</span>}
+                <span style={{ fontSize: 11, color: C.light }}>▾</span>
+              </button>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!posTarget) {
+                      setShowPosModal(true);
+                      return;
+                    }
+                    if (active?.items.length > 0 && !sending) setShowPosModal(true);
+                  }}
+                  disabled={active?.items.length === 0 || sending}
+                  style={{
+                    flex: 1,
+                    minWidth: 120,
+                    padding: 12,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    letterSpacing: 0.5,
+                    border: "none",
+                    borderRadius: 5,
+                    background: sentOk ? C.green : active?.items.length === 0 ? C.accentSoft : C.dark,
+                    color: active?.items.length === 0 ? C.light : "#fff",
+                    cursor: active?.items.length === 0 || sending ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {sending ? "GÖNDERİLİYOR..." : sentOk ? "GÖNDERİLDİ ✓" : "POS'A GÖNDER"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => active.items.length > 0 && setConfirmId(active.id)}
+                  disabled={active.items.length === 0 || sending}
+                  style={{
+                    padding: "12px 14px",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    letterSpacing: 0.4,
+                    border: bd,
+                    borderRadius: 5,
+                    background: "transparent",
+                    color: active.items.length === 0 ? C.light : C.dark,
+                    cursor: active.items.length === 0 || sending ? "not-allowed" : "pointer",
+                  }}
+                >
+                  ÇEK KAPAT
+                </button>
+              </div>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => active.items.length > 0 && setConfirmId(active.id)}
+              disabled={active.items.length === 0}
+              style={{
+                width: "100%",
+                padding: 12,
+                fontSize: 12,
+                fontWeight: 700,
+                letterSpacing: 0.5,
+                border: "none",
+                borderRadius: 5,
+                background: active.items.length === 0 ? C.accentSoft : C.dark,
+                color: active.items.length === 0 ? C.light : "#fff",
+                cursor: active.items.length === 0 ? "not-allowed" : "pointer",
+              }}
+            >
+              ÇEK KAPAT
+            </button>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
 
 function DemoApp({ mode, onBack, setup, landingUser, onUserChange }) {
   const template = setup?.template || getTemplatePreset("hamam");
@@ -697,6 +1014,13 @@ function DemoApp({ mode, onBack, setup, landingUser, onUserChange }) {
   const [posTarget, setPosTarget] = useState(null);
   const [sending, setSending] = useState(false);
   const [sentOk, setSentOk] = useState(false);
+  const isMobile = useThermaMobile();
+  /** Mobil: oturum listesi vs sepet/detay (therma-pos ile uyumlu) */
+  const [sessionUi, setSessionUi] = useState("list");
+
+  useEffect(() => {
+    if (view !== "sessions") setSessionUi("list");
+  }, [view]);
 
   useEffect(() => {
     if (!landingUser?.email) return;
@@ -707,6 +1031,11 @@ function DemoApp({ mode, onBack, setup, landingUser, onUserChange }) {
   const open = sessions.filter(s => s.status === "open");
   const closed = sessions.filter(s => s.status === "closed");
   const active = sessions.find(s => s.id === activeId);
+
+  useEffect(() => {
+    if (!active && sessionUi === "detail") setSessionUi("list");
+  }, [active, sessionUi]);
+
   const stot = (s) => s.items.reduce((a, i) => a + i.price * i.qty, 0);
   const elapsed = (d) => { const m = Math.floor((Date.now()-d)/60000); return m<1?"az önce":`${m}dk`; };
   const pickerCats = [{ k: "all", l: "Tümü" }, ...serviceCategories];
@@ -732,53 +1061,105 @@ function DemoApp({ mode, onBack, setup, landingUser, onUserChange }) {
     setCat("all");
   }, [pickerCats, cat]);
 
-  const addSession = () => { const n = newName.trim() || `${sessionLabel} ${sessions.length + 1}`; const s = mkSess(n); setSessions(p=>[...p,s]); setNewName(""); setAddingName(false); setActiveId(s.id); setView("sessions"); showToast(`"${n}" açıldı`); };
+  const addSession = () => {
+    const n = newName.trim() || `${sessionLabel} ${sessions.length + 1}`;
+    const s = mkSess(n);
+    setSessions((p) => [...p, s]);
+    setNewName("");
+    setAddingName(false);
+    setActiveId(s.id);
+    setView("sessions");
+    if (isMobile) setSessionUi("detail");
+    showToast(`"${n}" açıldı`);
+  };
   const addItem = useCallback((svc) => { setSessions(p => p.map(s => { if(s.id!==activeId) return s; const ex=s.items.find(i=>i.id===svc.id); return {...s, items: ex ? s.items.map(i=>i.id===svc.id?{...i,qty:i.qty+1}:i) : [...s.items,{...svc,qty:1}]}; })); showToast(`+ ${svc.name}`); }, [activeId]);
   const changeQty = (itemId, delta) => { setSessions(p => p.map(s => { if(s.id!==activeId) return s; return {...s, items: s.items.map(i=>i.id===itemId?{...i,qty:i.qty+delta}:i).filter(i=>i.qty>0)}; })); };
-  const closeSession = (sid) => { setSessions(p=>p.map(s=>s.id===sid?{...s,status:"closed",closedAt:new Date()}:s)); setConfirmId(null); showToast("Çek kapatıldı ✓"); const rem=open.filter(s=>s.id!==sid); setActiveId(rem.length?rem[0].id:null); };
+  const closeSession = (sid) => {
+    setSessions((p) => p.map((s) => (s.id === sid ? { ...s, status: "closed", closedAt: new Date() } : s)));
+    setConfirmId(null);
+    showToast("Çek kapatıldı ✓");
+    const rem = open.filter((s) => s.id !== sid);
+    setActiveId(rem.length ? rem[0].id : null);
+    if (isMobile) setSessionUi("list");
+  };
   const sendToPos = async () => { if(!posTarget||!active||active.items.length===0) return; setShowPosModal(false); setSending(true); await new Promise(r=>setTimeout(r,1500)); setSending(false); setSentOk(true); showToast(`${posTarget.name} → gönderildi ✓`); setTimeout(()=>setSentOk(false),3000); };
 
+  const handleHeaderBack = () => {
+    if (view === "profile") { setView("sessions"); return; }
+    if (isMobile && view === "sessions" && sessionUi === "detail") { setSessionUi("list"); return; }
+    onBack();
+  };
+
+  const showCatalog = Boolean(active && !isMobile);
+  const showCartPanel = Boolean(active && !isMobile);
+
   return (
-    <div style={{ height: "100vh", display: "flex", flexDirection: "column", background: C.bg, fontFamily: sans }}>
+    <div style={{ minHeight: "100dvh", display: "flex", flexDirection: "column", background: C.bg, fontFamily: sans, paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
         @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
         @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+        @keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
         .dr:hover{background:${C.accentSoft}!important}
+        html,body,#root{height:100%}
+        html{-webkit-tap-highlight-color:transparent}
         ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:${C.light};border-radius:2px}
       `}</style>
 
-      {toast && <div style={{ position:"fixed",bottom:20,left:"50%",transform:"translateX(-50%)",background:C.dark,color:"#fff",padding:"9px 18px",borderRadius:6,fontSize:12,fontFamily:mono,zIndex:9999,animation:"fadeUp .18s ease",boxShadow:"0 4px 20px rgba(0,0,0,.15)"}}>{toast}</div>}
+      {toast && <div style={{ position:"fixed",bottom:"max(20px, env(safe-area-inset-bottom))",left:"50%",transform:"translateX(-50%)",maxWidth:"min(92vw, 420px)",padding:"9px 16px",background:C.dark,color:"#fff",borderRadius:6,fontSize:12,fontFamily:mono,zIndex:9999,animation:"fadeUp .18s ease",boxShadow:"0 4px 20px rgba(0,0,0,.15)",textAlign:"center"}}>{toast}</div>}
 
       {confirmId && (()=>{ const s=sessions.find(x=>x.id===confirmId); if(!s) return null; return (
-        <div style={{position:"fixed",inset:0,background:"rgba(250,250,248,.92)",zIndex:8000,display:"flex",alignItems:"center",justifyContent:"center",padding:16,animation:"fadeIn .15s ease"}}>
-          <div style={{background:C.card,border:`2px solid ${C.dark}`,borderRadius:12,padding:28,width:"100%",maxWidth:400,animation:"fadeUp .18s ease"}}>
+        <div style={{position:"fixed",inset:0,background:"rgba(250,250,248,.92)",zIndex:8000,display:"flex",alignItems:isMobile?"flex-end":"center",justifyContent:"center",padding:"max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left))",animation:"fadeIn .15s ease",overflowY:"auto"}}>
+          <div style={{background:C.card,border:`2px solid ${C.dark}`,borderRadius:isMobile?"12px 12px 0 0":12,padding:"clamp(18px, 4vw, 28px)",width:"100%",maxWidth:400,maxHeight:"min(90dvh, 560px)",overflowY:"auto",WebkitOverflowScrolling:"touch",animation:"fadeUp .18s ease",margin:isMobile?0:"auto"}}>
             <div style={{fontSize:10,color:C.light,letterSpacing:1.5,fontFamily:mono,marginBottom:8}}>ÇEK KAPAT</div>
             <div style={{fontSize:22,fontWeight:700,color:C.dark,marginBottom:4}}>{s.name}</div>
             <div style={{fontSize:32,fontWeight:700,fontFamily:mono,color:C.dark,marginBottom:6}}>{fmt(stot(s))} ₺</div>
             <div style={{fontSize:12,color:C.mid,marginBottom:24}}>{s.items.length} kalem · {s.items.reduce((a,i)=>a+i.qty,0)} adet</div>
-            <div style={{display:"flex",gap:8}}>
-              <button onClick={()=>setConfirmId(null)} style={{flex:1,padding:12,fontSize:13,fontWeight:600,borderRadius:6,border:bd,background:"transparent",color:C.dark,cursor:"pointer"}}>İptal</button>
-              <button onClick={()=>closeSession(confirmId)} style={{flex:1,padding:12,fontSize:13,fontWeight:700,borderRadius:6,border:"none",background:C.dark,color:"#fff",cursor:"pointer"}}>Tahsil Et & Kapat</button>
+            <div style={{display:"flex",flexDirection:isMobile?"column-reverse":"row",gap:8}}>
+              <button type="button" onClick={()=>setConfirmId(null)} style={{flex:1,padding:12,fontSize:13,fontWeight:600,borderRadius:6,border:bd,background:"transparent",color:C.dark,cursor:"pointer",width:isMobile?"100%":undefined}}>İptal</button>
+              <button type="button" onClick={()=>closeSession(confirmId)} style={{flex:1,padding:12,fontSize:13,fontWeight:700,borderRadius:6,border:"none",background:C.dark,color:"#fff",cursor:"pointer",width:isMobile?"100%":undefined}}>Tahsil Et & Kapat</button>
             </div>
           </div>
         </div>); })()}
 
-      {showPosModal && hasPos && <PosModal devices={POS_DEVICES} selected={posTarget} onSelect={setPosTarget} onConfirm={sendToPos} sending={sending} sentOk={sentOk} onClose={()=>setShowPosModal(false)} activeItems={active?.items} />}
+      {showPosModal && hasPos && <PosModal alignBottom={isMobile} devices={POS_DEVICES} selected={posTarget} onSelect={setPosTarget} onConfirm={sendToPos} sending={sending} sentOk={sentOk} onClose={()=>setShowPosModal(false)} activeItems={active?.items} />}
 
+      {/* therma-pos: mobilde maxWidth 480 ortalı sütun + sticky header */}
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          minHeight: 0,
+          overflow: "hidden",
+          width: "100%",
+          ...(isMobile
+            ? { maxWidth: 480, margin: "0 auto", minHeight: "100dvh" }
+            : {}),
+        }}
+      >
       {/* Header */}
-      <header style={{height:52,borderBottom:bd,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 20px",flexShrink:0,background:C.card}}>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <button type="button" onClick={() => (view === "profile" ? setView("sessions") : onBack())} style={{background:"none",border:"none",fontSize:18,color:C.dark,cursor:"pointer"}} title={view === "profile" ? "Uygulamaya dön" : "Çıkış"}>←</button>
-          <span style={{fontSize:18,fontWeight:700,letterSpacing:-.5,color:C.dark}}>defter</span>
-          <span style={{fontSize:9,fontFamily:mono,color:"#fff",background:C.dark,padding:"3px 8px",borderRadius:4,letterSpacing:.5,fontWeight:600}}>DEMO</span>
-          <span style={{fontSize:11,color:C.light,fontFamily:mono}}>{hasPos?"Temel + POS":"Temel"}</span>
-          <span style={{fontSize:11,color:C.mid}}>· {businessName}</span>
+      <header style={{ height: isMobile ? "auto" : 52, minHeight: 52, borderBottom: bd, display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", justifyContent: "space-between", gap: 8, padding: isMobile ? "4px 16px 8px" : "0 20px", flexShrink: 0, background: C.card, ...(isMobile ? { position: "sticky", top: 0, zIndex: 100 } : {}) }}>
+        <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 6 : 10, flexWrap: "wrap", minWidth: 0, paddingTop: isMobile ? "max(4px, env(safe-area-inset-top))" : 0, paddingBottom: isMobile ? 2 : 0 }}>
+          <button type="button" onClick={handleHeaderBack} style={{ background: "none", border: "none", fontSize: 18, color: C.dark, cursor: "pointer", flexShrink: 0 }} title={view === "profile" ? "Uygulamaya dön" : isMobile && view === "sessions" && sessionUi === "detail" ? "Oturumlara dön" : "Çıkış"}>←</button>
+          {isMobile && view === "sessions" && sessionUi === "detail" && active ? (
+            <span style={{ fontSize: 15, fontWeight: 700, color: C.dark, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }} title={active.name}>
+              {active.name}
+              <span style={{ fontWeight: 400, color: C.light, fontFamily: mono, fontSize: 12 }}> /detay</span>
+            </span>
+          ) : (
+            <>
+              <span style={{ fontSize: isMobile ? 16 : 18, fontWeight: 700, letterSpacing: -0.5, color: C.dark }}>defter</span>
+              <span style={{ fontSize: 9, fontFamily: mono, color: "#fff", background: C.dark, padding: "3px 8px", borderRadius: 4, letterSpacing: 0.5, fontWeight: 600, flexShrink: 0 }}>DEMO</span>
+              <span style={{ fontSize: 10, color: C.light, fontFamily: mono, display: isMobile ? "none" : "inline" }}>{hasPos ? "Temel + POS" : "Temel"}</span>
+              <span style={{ fontSize: 11, color: C.mid, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: isMobile ? "min(42vw, 140px)" : 280 }} title={businessName}>· {businessName}</span>
+            </>
+          )}
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
+        <div style={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "nowrap", overflowX: "auto", WebkitOverflowScrolling: "touch", flexShrink: 0, width: isMobile ? "100%" : undefined, maxWidth: "100%", paddingBottom: isMobile ? 2 : 0, scrollbarWidth: "thin" }}>
           {view !== "profile" && [["sessions", sessionsNavLabel], ["analytics", "ANALİZ"], ["services", "HİZMETLER"]].map(([t, l]) => (
-            <button key={t} type="button" onClick={() => setView(t)} style={{ padding: "6px 14px", fontSize: 11, fontWeight: 600, letterSpacing: 0.5, border: `1px solid ${view === t ? C.dark : "transparent"}`, background: view === t ? C.dark : "transparent", color: view === t ? "#fff" : C.light, borderRadius: 3, cursor: "pointer", transition: "all .15s" }}>{l}</button>
+            <button key={t} type="button" onClick={() => setView(t)} style={{ padding: isMobile ? "5px 8px" : "6px 14px", fontSize: isMobile ? 9 : 11, fontWeight: 600, letterSpacing: isMobile ? 0.3 : 0.5, border: `1px solid ${view === t ? C.dark : "transparent"}`, background: view === t ? C.dark : "transparent", color: view === t ? "#fff" : C.light, borderRadius: 3, cursor: "pointer", transition: "all .15s", flexShrink: 0 }}>{l}</button>
           ))}
           {view === "profile" && <span style={{ fontSize: 11, fontWeight: 600, color: C.dark }}>Profil</span>}
         </div>
@@ -800,7 +1181,7 @@ function DemoApp({ mode, onBack, setup, landingUser, onUserChange }) {
 
       {/* ANALYTICS */}
       {view==="analytics" && (
-        <div style={{flex:1,padding:24,overflowY:"auto",display:"flex",flexDirection:"column",gap:14}}>
+        <div style={{ flex: 1, padding: isMobile ? 16 : 24, overflowY: "auto", display: "flex", flexDirection: "column", gap: 14 }}>
           <div style={{ fontSize: 12, color: C.mid, marginBottom: -6 }}>{SECTORS.find((s) => s.id === sectorId)?.name || "Şablon"} · özet (demo veri + kapalı oturumlar)</div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(160px, 1fr))",gap:10}}>
             {[
@@ -815,13 +1196,15 @@ function DemoApp({ mode, onBack, setup, landingUser, onUserChange }) {
                 <div style={{fontSize:11,color:C.green}}>{k.d}</div>
               </div>))}
           </div>
-          <div style={{border:bd,borderRadius:8,padding:16,background:C.card}}>
+          <div style={{border:bd,borderRadius:8,padding:16,background:C.card,minWidth:0}}>
             <div style={{fontSize:10,fontWeight:700,letterSpacing:1,marginBottom:14,color:C.mid,fontFamily:mono}}>HAFTALIK İŞLEM (ÖRNEK)</div>
-            <div style={{display:"flex",alignItems:"flex-end",gap:6,height:120}}>
-              {WEEKLY.map((d,i)=>(<div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:5}}><div style={{width:"100%",background:C.dark,borderRadius:"3px 3px 0 0",height:`${(d.v/maxW)*100}px`,transition:"height .4s ease"}} /><span style={{fontSize:9,color:C.light,fontFamily:mono}}>{d.d}</span></div>))}
+            <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch",marginLeft:-4,marginRight:-4,paddingLeft:4,paddingRight:4}}>
+              <div style={{display:"flex",alignItems:"flex-end",gap:isMobile?4:6,height:120,minWidth:isMobile?320:"auto"}}>
+                {WEEKLY.map((d,i)=>(<div key={i} style={{flex:isMobile?"0 0 36px":1,minWidth:isMobile?36:0,display:"flex",flexDirection:"column",alignItems:"center",gap:5}}><div style={{width:"100%",background:C.dark,borderRadius:"3px 3px 0 0",height:`${(d.v/maxW)*100}px`,transition:"height .4s ease"}} /><span style={{fontSize:9,color:C.light,fontFamily:mono,whiteSpace:"nowrap"}}>{d.d}</span></div>))}
+              </div>
             </div>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 14 }}>
             <div style={{border:bd,borderRadius:8,padding:16,background:C.card}}>
               <div style={{fontSize:10,fontWeight:700,letterSpacing:1,marginBottom:14,color:C.mid,fontFamily:mono}}>EN ÇOK SATILAN {topFromSessions.length ? "(KAPALI)" : "(ŞABLON)"}</div>
               {topSelling.map((s,i)=>(
@@ -861,117 +1244,284 @@ function DemoApp({ mode, onBack, setup, landingUser, onUserChange }) {
         />
       )}
 
-      {/* SESSIONS */}
+      {/* SESSIONS — masaüstü: 3 sütun · mobil (≤900px / kompakt görünüm): liste ↔ detay + hizmet sheet */}
       {view==="sessions" && (
-        <div style={{flex:1,display:"flex",minHeight:0}}>
-          {/* Sidebar */}
-          <div style={{width:260,borderRight:bd,display:"flex",flexDirection:"column",flexShrink:0,background:C.card}}>
-            <div style={{padding:"12px 16px",borderBottom:bd,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <span style={{fontSize:10,color:C.light,letterSpacing:1.5,fontFamily:mono}}>AÇIK — {open.length}</span>
-              <button onClick={()=>setAddingName(v=>!v)} style={{fontSize:18,background:"none",border:"none",color:C.light,cursor:"pointer"}}>+</button>
-            </div>
-            {addingName && (
-              <div style={{padding:"10px 14px",borderBottom:bd,background:C.accentSoft,animation:"fadeUp .15s ease"}}>
-                <input autoFocus value={newName} onChange={e=>setNewName(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addSession();if(e.key==="Escape")setAddingName(false);}} placeholder={`${sessionLabel} adı...`} style={{width:"100%",padding:"8px 10px",fontSize:13,border:bd,borderRadius:5,outline:"none",fontFamily:sans,marginBottom:8,background:C.card}} />
-                <div style={{display:"flex",gap:6}}>
-                  <button onClick={()=>setAddingName(false)} style={{flex:1,padding:8,fontSize:12,fontWeight:600,borderRadius:5,border:bd,background:"transparent",color:C.dark,cursor:"pointer"}}>İptal</button>
-                  <button onClick={addSession} style={{flex:1,padding:8,fontSize:12,fontWeight:700,borderRadius:5,border:"none",background:C.dark,color:"#fff",cursor:"pointer"}}>Aç</button>
+        isMobile ? (
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden", background: C.bg, maxWidth: 480, width: "100%", margin: "0 auto", alignSelf: "stretch" }}>
+            {sessionUi === "list" && (
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
+                <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "0 0 8px" }}>
+                  <div style={{ padding: "14px 16px 8px" }}>
+                    <div style={{ fontSize: 10, color: C.light, letterSpacing: 1, marginBottom: 10, fontFamily: mono }}>AÇIK — {open.length}</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {open.length === 0 && !addingName && (
+                        <div style={{ textAlign: "center", padding: "28px 0", color: C.light, fontSize: 13 }}>Açık oturum yok</div>
+                      )}
+                      {open.map((s, i) => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          className="dr"
+                          onClick={() => { setActiveId(s.id); setSessionUi("detail"); }}
+                          style={{
+                            animation: `fadeUp .16s ease ${i * 0.03}s both`,
+                            width: "100%",
+                            background: C.card,
+                            border: bd,
+                            borderRadius: 8,
+                            padding: "13px 14px",
+                            textAlign: "left",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 12,
+                            cursor: "pointer",
+                          }}
+                        >
+                          <div style={{ width: 40, height: 40, borderRadius: 6, background: C.accentSoft, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, fontFamily: mono, color: C.dark }}>
+                            {s.name.slice(0, 2).toUpperCase()}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: C.dark }}>{s.name}</div>
+                            <div style={{ fontSize: 11, color: C.light, fontFamily: mono, marginTop: 2 }}>
+                              {elapsed(s.createdAt)} · {s.items.reduce((a, i) => a + i.qty, 0)} hizmet
+                            </div>
+                          </div>
+                          <div style={{ textAlign: "right", flexShrink: 0 }}>
+                            <div style={{ fontSize: 15, fontWeight: 700, fontFamily: mono, color: C.dark }}>{fmt(stot(s))} ₺</div>
+                            <div style={{ fontSize: 11, color: C.light, marginTop: 2 }}>→</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                    <div style={{ marginTop: 10 }}>
+                      {!addingName ? (
+                        <button type="button" onClick={() => setAddingName(true)} style={{ width: "100%", padding: 12, borderRadius: 8, border: `1px dashed ${C.border}`, background: "transparent", color: C.mid, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                          + Yeni {sessionLabel} Aç
+                        </button>
+                      ) : (
+                        <div style={{ border: `1px solid ${C.dark}`, borderRadius: 8, padding: 14, animation: "fadeUp .15s ease" }}>
+                          <div style={{ fontSize: 10, color: C.light, letterSpacing: 1, marginBottom: 8, fontFamily: mono }}>YENİ OTURUM</div>
+                          <input
+                            autoFocus
+                            value={newName}
+                            onChange={(e) => setNewName(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") addSession(); if (e.key === "Escape") setAddingName(false); }}
+                            placeholder={`${sessionLabel} adı...`}
+                            style={{ width: "100%", padding: "10px 12px", fontSize: 14, border: bd, borderRadius: 6, outline: "none", fontFamily: sans, marginBottom: 10, background: C.card }}
+                          />
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <button type="button" onClick={() => setAddingName(false)} style={{ flex: 1, padding: 10, fontSize: 12, fontWeight: 600, borderRadius: 6, border: bd, background: "transparent", color: C.dark, cursor: "pointer" }}>İptal</button>
+                            <button type="button" onClick={addSession} style={{ flex: 1, padding: 10, fontSize: 12, fontWeight: 700, borderRadius: 6, border: "none", background: C.dark, color: "#fff", cursor: "pointer" }}>Aç</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  {closed.length > 0 && (
+                    <div style={{ borderTop: bd, marginTop: 8 }}>
+                      <div style={{ padding: "9px 16px", background: C.accentSoft }}>
+                        <span style={{ fontSize: 10, color: C.light, letterSpacing: 1, fontFamily: mono }}>KAPALI — {closed.length}</span>
+                      </div>
+                      {closed.map((s) => (
+                        <div key={s.id} style={{ padding: "10px 16px", borderBottom: bd, background: C.accentSoft, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: C.mid }}>{s.name}</div>
+                            <div style={{ fontSize: 11, color: C.light }}>{s.items.reduce((a, i) => a + i.qty, 0)} hizmet</div>
+                          </div>
+                          <div style={{ fontSize: 14, fontWeight: 700, fontFamily: mono, color: C.mid }}>{fmt(stot(s))} ₺</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div style={{ borderTop: bd, padding: "10px 12px", background: C.card, flexShrink: 0 }}>
+                  <button type="button" onClick={() => setView("profile")} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", border: "none", background: "transparent", padding: "4px", cursor: "pointer", textAlign: "left" }}>
+                    <div style={{ width: 28, height: 28, borderRadius: "50%", background: C.accentSoft, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: C.dark, flexShrink: 0 }}>
+                      {(profile.email || "?").charAt(0).toUpperCase()}
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: C.dark, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{profile.email}</div>
+                      <div style={{ fontSize: 10, color: C.light, fontFamily: mono }}>Profil ve ayarlar</div>
+                    </div>
+                  </button>
                 </div>
               </div>
             )}
-            <div style={{flex:1,overflowY:"auto"}}>
-              {open.length===0&&!addingName&&<div style={{padding:"40px 0",textAlign:"center",color:C.light,fontSize:12}}>Açık oturum yok</div>}
-              {open.map(s=>(
-                <button key={s.id} className="dr" onClick={()=>setActiveId(s.id)} style={{width:"100%",padding:"12px 16px",border:"none",textAlign:"left",background:activeId===s.id?C.accentSoft:"transparent",borderBottom:bd,borderLeft:activeId===s.id?`3px solid ${C.dark}`:"3px solid transparent",cursor:"pointer",transition:"all .1s"}}>
-                  <div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontSize:13,fontWeight:700,color:C.dark}}>{s.name}</span><span style={{fontSize:13,fontWeight:700,fontFamily:mono,color:C.dark}}>{fmt(stot(s))} ₺</span></div>
-                  <div style={{fontSize:11,color:C.light,marginTop:3,fontFamily:mono}}>{elapsed(s.createdAt)} · {s.items.reduce((a,i)=>a+i.qty,0)} hizmet</div>
-                </button>
-              ))}
-              {closed.length>0&&<div style={{borderTop:bd}}><div style={{padding:"9px 14px",background:C.accentSoft}}><span style={{fontSize:10,color:C.light,letterSpacing:1,fontFamily:mono}}>KAPALI — {closed.length}</span></div>
-                {closed.map(s=>(<div key={s.id} style={{padding:"10px 16px",borderBottom:bd,background:C.accentSoft,display:"flex",justifyContent:"space-between"}}><div><div style={{fontSize:12,fontWeight:600,color:C.mid}}>{s.name}</div><div style={{fontSize:11,color:C.light}}>{s.items.reduce((a,i)=>a+i.qty,0)} hizmet</div></div><div style={{fontSize:13,fontWeight:700,fontFamily:mono,color:C.mid}}>{fmt(stot(s))} ₺</div></div>))}
-              </div>}
-            </div>
-            <div style={{borderTop:bd,padding:"10px 12px",background:C.card,flexShrink:0}}>
-              <button
-                type="button"
-                onClick={() => setView("profile")}
-                style={{display:"flex",alignItems:"center",gap:9,width:"100%",border:"none",background:"transparent",padding:"4px",cursor:"pointer",textAlign:"left"}}
-              >
-                <div style={{width:28,height:28,borderRadius:"50%",background:C.accentSoft,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:C.dark,flexShrink:0}}>
-                  {(profile.email || "?").charAt(0).toUpperCase()}
-                </div>
-                <div style={{minWidth:0}}>
-                  <div style={{fontSize:11,fontWeight:600,color:C.dark,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{profile.email}</div>
-                  <div style={{fontSize:10,color:C.light,fontFamily:mono}}>Profil ve ayarlar</div>
-                </div>
-              </button>
-            </div>
+            {sessionUi === "detail" && active && (
+              <DemoMobileSessionDetail
+                active={active}
+                filtered={filtered}
+                cat={cat}
+                setCat={setCat}
+                addItem={addItem}
+                changeQty={changeQty}
+                posTarget={posTarget}
+                setShowPosModal={setShowPosModal}
+                sending={sending}
+                sentOk={sentOk}
+                setConfirmId={setConfirmId}
+                hasPos={hasPos}
+                pickerCats={pickerCats}
+                qtyBtn={qtyBtn}
+                sessionTotal={stot}
+              />
+            )}
           </div>
-
-          {active ? (<>
-            {/* Service picker */}
-            <div style={{width:280,borderRight:bd,display:"flex",flexDirection:"column",flexShrink:0}}>
-              <div style={{display:"flex",flexWrap:"wrap",borderBottom:bd,padding:"6px 8px",gap:4,flexShrink:0}}>
-                {pickerCats.map(c=>(<button key={c.k} onClick={()=>setCat(c.k)} style={{padding:"5px 10px",fontSize:11,fontWeight:600,borderRadius:4,border:`1px solid ${cat===c.k?C.dark:C.border}`,background:cat===c.k?C.dark:"transparent",color:cat===c.k?"#fff":C.light,cursor:"pointer",transition:"all .12s"}}>{c.l}</button>))}
-              </div>
-              <div style={{flex:1,overflowY:"auto"}}>
-                {filtered.map(svc=>(<button key={svc.id} className="dr" onClick={()=>addItem(svc)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 14px",border:"none",borderBottom:bd,background:"transparent",textAlign:"left",cursor:"pointer"}}>
-                  <div style={{flex:1}}><div style={{fontSize:13,fontWeight:500,color:C.dark}}>{svc.name}</div>{svc.dur>0&&<div style={{fontSize:10,color:C.light}}>{svc.dur} dk</div>}</div>
-                  <div style={{fontSize:12,fontWeight:700,fontFamily:mono,color:C.dark}}>{fmt(svc.price)} ₺</div>
-                  <div style={{width:24,height:24,borderRadius:4,background:C.accentSoft,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,color:C.dark}}>+</div>
-                </button>))}
-              </div>
-            </div>
-
-            {/* Cart */}
-            <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0}}>
-              <div style={{padding:"12px 20px",borderBottom:bd,display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
-                <div><div style={{fontSize:16,fontWeight:700,color:C.dark}}>{active.name}</div><div style={{fontSize:11,color:C.light,fontFamily:mono}}>{elapsed(active.createdAt)} · {active.items.length} kalem</div></div>
-              </div>
-              <div style={{flex:1,overflowY:"auto"}}>
-                {active.items.length===0?<div style={{textAlign:"center",padding:"60px 0",color:C.light,fontSize:13}}>← Soldan hizmet ekleyin</div>:active.items.map(item=>(
-                  <div key={item.id} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 20px",borderBottom:bd}}>
-                    <div style={{flex:1}}><div style={{fontSize:13,fontWeight:600,color:C.dark}}>{item.name}</div><div style={{fontSize:11,color:C.light,fontFamily:mono}}>{fmt(item.price)} ₺{item.qty>1?` × ${item.qty} = ${fmt(item.price*item.qty)} ₺`:""}</div></div>
-                    <div style={{display:"flex",alignItems:"center",gap:6}}>
-                      <button onClick={()=>changeQty(item.id,-1)} style={qtyBtn}>−</button>
-                      <span style={{fontSize:13,fontWeight:700,minWidth:18,textAlign:"center",fontFamily:mono}}>{item.qty}</span>
-                      <button onClick={()=>changeQty(item.id,1)} style={qtyBtn}>+</button>
-                    </div>
-                  </div>))}
-              </div>
-              {/* Bottom */}
-              <div style={{borderTop:bd,padding:"14px 20px",flexShrink:0}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:hasPos?12:0}}>
-                  <span style={{fontSize:11,color:C.light,letterSpacing:1,fontFamily:mono}}>TOPLAM</span>
-                  <span style={{fontSize:26,fontWeight:700,fontFamily:mono,color:C.dark}}>{fmt(stot(active))} ₺</span>
+        ) : (
+          <div style={{ flex: 1, display: "flex", flexDirection: "row", minHeight: 0, overflow: "hidden" }}>
+              <div style={{ width: "clamp(220px, 24vw, 260px)", minHeight: 0, borderRight: bd, display: "flex", flexDirection: "column", flexShrink: 0, background: C.card }}>
+                <div style={{ padding: "12px 16px", borderBottom: bd, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: 10, color: C.light, letterSpacing: 1.5, fontFamily: mono }}>AÇIK — {open.length}</span>
+                  <button type="button" onClick={() => setAddingName((v) => !v)} style={{ fontSize: 18, background: "none", border: "none", color: C.light, cursor: "pointer" }}>+</button>
                 </div>
-                {hasPos ? <>
-                  <button onClick={()=>setShowPosModal(true)} style={{width:"100%",marginBottom:8,padding:"10px 14px",borderRadius:5,border:`1px solid ${posTarget?C.dark:C.border}`,background:posTarget?C.accentSoft:"transparent",textAlign:"left",display:"flex",alignItems:"center",gap:10,cursor:"pointer"}}>
-                    <div style={{width:7,height:7,borderRadius:"50%",background:posTarget?C.green:C.light}} />
-                    <span style={{fontSize:12,fontWeight:600,flex:1,color:C.dark}}>{posTarget?posTarget.name:"POS cihazı seç..."}</span>
-                    {posTarget&&<span style={{fontSize:11,color:C.light}}>{posTarget.loc}</span>}
-                    <span style={{fontSize:11,color:C.light}}>▾</span>
-                  </button>
-                  <div style={{display:"flex",gap:8}}>
-                    <button onClick={()=>{if(!posTarget){setShowPosModal(true);return;} if(active?.items.length>0&&!sending)setShowPosModal(true);}} disabled={active?.items.length===0||sending} style={{flex:1,padding:12,fontSize:12,fontWeight:700,letterSpacing:.5,border:"none",borderRadius:5,transition:"all .2s",background:sentOk?C.green:(active?.items.length===0?C.accentSoft:C.dark),color:active?.items.length===0?C.light:"#fff",cursor:active?.items.length===0||sending?"not-allowed":"pointer"}}>
-                      {sending?"GÖNDERİLİYOR...":sentOk?"GÖNDERİLDİ ✓":"POS'A GÖNDER"}
+                {addingName && (
+                  <div style={{ padding: "10px 14px", borderBottom: bd, background: C.accentSoft, animation: "fadeUp .15s ease" }}>
+                    <input autoFocus value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addSession(); if (e.key === "Escape") setAddingName(false); }} placeholder={`${sessionLabel} adı...`} style={{ width: "100%", padding: "8px 10px", fontSize: 13, border: bd, borderRadius: 5, outline: "none", fontFamily: sans, marginBottom: 8, background: C.card }} />
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button type="button" onClick={() => setAddingName(false)} style={{ flex: 1, padding: 8, fontSize: 12, fontWeight: 600, borderRadius: 5, border: bd, background: "transparent", color: C.dark, cursor: "pointer" }}>İptal</button>
+                      <button type="button" onClick={addSession} style={{ flex: 1, padding: 8, fontSize: 12, fontWeight: 700, borderRadius: 5, border: "none", background: C.dark, color: "#fff", cursor: "pointer" }}>Aç</button>
+                    </div>
+                  </div>
+                )}
+                <div style={{ flex: 1, overflowY: "auto" }}>
+                  {open.length === 0 && !addingName && <div style={{ padding: "40px 0", textAlign: "center", color: C.light, fontSize: 12 }}>Açık oturum yok</div>}
+                  {open.map((s) => (
+                    <button key={s.id} type="button" className="dr" onClick={() => setActiveId(s.id)} style={{ width: "100%", padding: "12px 16px", border: "none", textAlign: "left", background: activeId === s.id ? C.accentSoft : "transparent", borderBottom: bd, borderLeft: activeId === s.id ? `3px solid ${C.dark}` : "3px solid transparent", cursor: "pointer", transition: "all .1s" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: C.dark }}>{s.name}</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, fontFamily: mono, color: C.dark }}>{fmt(stot(s))} ₺</span>
+                      </div>
+                      <div style={{ fontSize: 11, color: C.light, marginTop: 3, fontFamily: mono }}>
+                        {elapsed(s.createdAt)} · {s.items.reduce((a, i) => a + i.qty, 0)} hizmet
+                      </div>
                     </button>
-                    <button onClick={()=>active.items.length>0&&setConfirmId(active.id)} disabled={active.items.length===0||sending} style={{padding:"12px 14px",fontSize:12,fontWeight:700,letterSpacing:.4,border:bd,borderRadius:5,background:"transparent",color:active.items.length===0?C.light:C.dark,cursor:active.items.length===0||sending?"not-allowed":"pointer"}}>
+                  ))}
+                  {closed.length > 0 && (
+                    <div style={{ borderTop: bd }}>
+                      <div style={{ padding: "9px 14px", background: C.accentSoft }}>
+                        <span style={{ fontSize: 10, color: C.light, letterSpacing: 1, fontFamily: mono }}>KAPALI — {closed.length}</span>
+                      </div>
+                      {closed.map((s) => (
+                        <div key={s.id} style={{ padding: "10px 16px", borderBottom: bd, background: C.accentSoft, display: "flex", justifyContent: "space-between" }}>
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: C.mid }}>{s.name}</div>
+                            <div style={{ fontSize: 11, color: C.light }}>{s.items.reduce((a, i) => a + i.qty, 0)} hizmet</div>
+                          </div>
+                          <div style={{ fontSize: 13, fontWeight: 700, fontFamily: mono, color: C.mid }}>{fmt(stot(s))} ₺</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div style={{ borderTop: bd, padding: "10px 12px", background: C.card, flexShrink: 0 }}>
+                  <button type="button" onClick={() => setView("profile")} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", border: "none", background: "transparent", padding: "4px", cursor: "pointer", textAlign: "left" }}>
+                    <div style={{ width: 28, height: 28, borderRadius: "50%", background: C.accentSoft, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: C.dark, flexShrink: 0 }}>
+                      {(profile.email || "?").charAt(0).toUpperCase()}
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: C.dark, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{profile.email}</div>
+                      <div style={{ fontSize: 10, color: C.light, fontFamily: mono }}>Profil ve ayarlar</div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            {active && showCatalog && (
+              <div style={{ width: "clamp(240px, 27vw, 280px)", minHeight: 0, borderRight: bd, display: "flex", flexDirection: "column", flexShrink: 0, background: C.card }}>
+                <div style={{ display: "flex", flexWrap: "wrap", borderBottom: bd, padding: "6px 8px", gap: 4, flexShrink: 0 }}>
+                  {pickerCats.map((c) => (
+                    <button key={c.k} type="button" onClick={() => setCat(c.k)} style={{ padding: "5px 10px", fontSize: 11, fontWeight: 600, borderRadius: 4, border: `1px solid ${cat === c.k ? C.dark : C.border}`, background: cat === c.k ? C.dark : "transparent", color: cat === c.k ? "#fff" : C.light, cursor: "pointer", transition: "all .12s" }}>
+                      {c.l}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ flex: 1, overflowY: "auto" }}>
+                  {filtered.map((svc) => (
+                    <button key={svc.id} type="button" className="dr" onClick={() => addItem(svc)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", border: "none", borderBottom: bd, background: "transparent", textAlign: "left", cursor: "pointer" }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 500, color: C.dark }}>{svc.name}</div>
+                        {svc.dur > 0 && <div style={{ fontSize: 10, color: C.light }}>{svc.dur} dk</div>}
+                      </div>
+                      <div style={{ fontSize: 12, fontWeight: 700, fontFamily: mono, color: C.dark, flexShrink: 0 }}>{fmt(svc.price)} ₺</div>
+                      <div style={{ width: 24, height: 24, borderRadius: 4, background: C.accentSoft, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: C.dark, flexShrink: 0 }}>+</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {active && showCartPanel && (
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0, background: C.card }}>
+                <div style={{ padding: "12px 20px", borderBottom: bd, display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+                  <div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: C.dark }}>{active.name}</div>
+                    <div style={{ fontSize: 11, color: C.light, fontFamily: mono }}>
+                      {elapsed(active.createdAt)} · {active.items.length} kalem
+                    </div>
+                  </div>
+                </div>
+                <div style={{ flex: 1, overflowY: "auto" }}>
+                  {active.items.length === 0 ? (
+                    <div style={{ textAlign: "center", padding: "60px 16px", color: C.light, fontSize: 13 }}>← Soldan hizmet ekleyin</div>
+                  ) : (
+                    active.items.map((item) => (
+                      <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 20px", borderBottom: bd }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: C.dark }}>{item.name}</div>
+                          <div style={{ fontSize: 11, color: C.light, fontFamily: mono }}>
+                            {fmt(item.price)} ₺{item.qty > 1 ? ` × ${item.qty} = ${fmt(item.price * item.qty)} ₺` : ""}
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                          <button type="button" onClick={() => changeQty(item.id, -1)} style={qtyBtn}>
+                            −
+                          </button>
+                          <span style={{ fontSize: 13, fontWeight: 700, minWidth: 18, textAlign: "center", fontFamily: mono }}>{item.qty}</span>
+                          <button type="button" onClick={() => changeQty(item.id, 1)} style={qtyBtn}>
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <div style={{ borderTop: bd, padding: "14px 20px", flexShrink: 0 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: hasPos ? 12 : 0 }}>
+                    <span style={{ fontSize: 11, color: C.light, letterSpacing: 1, fontFamily: mono }}>TOPLAM</span>
+                    <span style={{ fontSize: 26, fontWeight: 700, fontFamily: mono, color: C.dark }}>{fmt(stot(active))} ₺</span>
+                  </div>
+                  {hasPos ? (
+                    <>
+                      <button type="button" onClick={() => setShowPosModal(true)} style={{ width: "100%", marginBottom: 8, padding: "10px 14px", borderRadius: 5, border: `1px solid ${posTarget ? C.dark : C.border}`, background: posTarget ? C.accentSoft : "transparent", textAlign: "left", display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+                        <div style={{ width: 7, height: 7, borderRadius: "50%", background: posTarget ? C.green : C.light }} />
+                        <span style={{ fontSize: 12, fontWeight: 600, flex: 1, color: C.dark, minWidth: 0 }}>{posTarget ? posTarget.name : "POS cihazı seç..."}</span>
+                        {posTarget && <span style={{ fontSize: 11, color: C.light, flexShrink: 0 }}>{posTarget.loc}</span>}
+                        <span style={{ fontSize: 11, color: C.light }}>▾</span>
+                      </button>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <button type="button" onClick={() => { if (!posTarget) { setShowPosModal(true); return; } if (active?.items.length > 0 && !sending) setShowPosModal(true); }} disabled={active?.items.length === 0 || sending} style={{ flex: 1, minWidth: 120, padding: 12, fontSize: 12, fontWeight: 700, letterSpacing: 0.5, border: "none", borderRadius: 5, transition: "all .2s", background: sentOk ? C.green : active?.items.length === 0 ? C.accentSoft : C.dark, color: active?.items.length === 0 ? C.light : "#fff", cursor: active?.items.length === 0 || sending ? "not-allowed" : "pointer" }}>
+                          {sending ? "GÖNDERİLİYOR..." : sentOk ? "GÖNDERİLDİ ✓" : "POS'A GÖNDER"}
+                        </button>
+                        <button type="button" onClick={() => active.items.length > 0 && setConfirmId(active.id)} disabled={active.items.length === 0 || sending} style={{ padding: "12px 14px", fontSize: 12, fontWeight: 700, letterSpacing: 0.4, border: bd, borderRadius: 5, background: "transparent", color: active.items.length === 0 ? C.light : C.dark, cursor: active.items.length === 0 || sending ? "not-allowed" : "pointer" }}>
+                          ÇEK KAPAT
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <button type="button" onClick={() => active.items.length > 0 && setConfirmId(active.id)} disabled={active.items.length === 0} style={{ width: "100%", padding: 12, fontSize: 12, fontWeight: 700, letterSpacing: 0.5, border: "none", borderRadius: 5, transition: "all .2s", background: active.items.length === 0 ? C.accentSoft : C.dark, color: active.items.length === 0 ? C.light : "#fff", cursor: active.items.length === 0 ? "not-allowed" : "pointer" }}>
                       ÇEK KAPAT
                     </button>
-                  </div>
-                </> : (
-                  <button onClick={()=>active.items.length>0&&setConfirmId(active.id)} disabled={active.items.length===0} style={{width:"100%",padding:12,fontSize:12,fontWeight:700,letterSpacing:.5,border:"none",borderRadius:5,transition:"all .2s",background:active.items.length===0?C.accentSoft:C.dark,color:active.items.length===0?C.light:"#fff",cursor:active.items.length===0?"not-allowed":"pointer"}}>
-                    ÇEK KAPAT
-                  </button>
-                )}
+                  )}
+                </div>
               </div>
-            </div>
-          </>) : <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",color:C.light,fontSize:13}}>← Bir oturum seçin veya yeni oturum açın</div>}
-        </div>
+            )}
+            {!active && (
+              <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: C.light, fontSize: 13, padding: 16, textAlign: "center" }}>← Bir oturum seçin veya yeni oturum açın</div>
+            )}
+          </div>
+        )
       )}
       </div>
 
+      </div>
     </div>
   );
 }
@@ -984,7 +1534,7 @@ function DemoProfileScreen({ profile, onChange, onSave, onBack }) {
     </div>
   );
   return (
-    <div style={{ flex: 1, overflowY: "auto", padding: 24, maxWidth: 520, margin: "0 auto", width: "100%" }}>
+    <div style={{ flex: 1, overflowY: "auto", padding: "clamp(16px, 4vw, 24px)", paddingBottom: "max(clamp(16px, 4vw, 24px), env(safe-area-inset-bottom))", maxWidth: 520, margin: "0 auto", width: "100%", minHeight: 0 }}>
       <button type="button" onClick={onBack} style={{ marginBottom: 12, border: "none", background: "transparent", color: C.mid, fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0 }}>
         ← Uygulamaya dön
       </button>
@@ -1015,12 +1565,12 @@ function DemoProfileScreen({ profile, onChange, onSave, onBack }) {
 }
 
 /* ── POS MODAL ── */
-function PosModal({ devices, selected, onSelect, onConfirm, sending, sentOk, onClose, activeItems }) {
+function PosModal({ devices, selected, onSelect, onConfirm, sending, sentOk, onClose, activeItems, alignBottom }) {
   const [local, setLocal] = useState(selected);
   const canSend = local && activeItems?.length > 0 && !sending;
   return (
-    <div style={{position:"fixed",inset:0,background:"rgba(250,250,248,.92)",zIndex:9000,display:"flex",alignItems:"center",justifyContent:"center",padding:16,animation:"fadeIn .15s ease"}}>
-      <div style={{background:C.card,border:`2px solid ${C.dark}`,borderRadius:12,width:"100%",maxWidth:480,animation:"fadeUp .18s ease",overflow:"hidden"}}>
+    <div style={{position:"fixed",inset:0,background:"rgba(250,250,248,.92)",zIndex:9000,display:"flex",alignItems:alignBottom?"flex-end":"center",justifyContent:"center",padding:"max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left))",animation:"fadeIn .15s ease",overflowY:"auto"}}>
+      <div style={{background:C.card,border:`2px solid ${C.dark}`,borderRadius:alignBottom?"12px 12px 0 0":12,width:"100%",maxWidth:480,maxHeight:"min(90dvh, 640px)",animation:"fadeUp .18s ease",overflowY:"auto",WebkitOverflowScrolling:"touch",margin:alignBottom?0:"auto"}}>
         <div style={{padding:"16px 20px",borderBottom:bd,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div><div style={{fontSize:10,color:C.light,letterSpacing:1.5,fontFamily:mono,marginBottom:2}}>POS CİHAZI SEÇ</div><div style={{fontSize:14,fontWeight:700,color:C.dark}}>Hangi cihaza gönderelim?</div></div>
           <button onClick={onClose} style={{background:"none",border:"none",fontSize:20,color:C.light,cursor:"pointer"}}>×</button>
@@ -1142,9 +1692,9 @@ function ServicesAdmin({ hasPos, services, setServices, categories, setCategorie
       {subTab==="categories"&&(
         <div style={{flex:1,overflowY:"auto",padding:16}}>
           <div style={{fontSize:11,color:C.light,marginBottom:10}}>Hizmetleri gruplamak için kategoriler.</div>
-          <div style={{display:"flex",gap:8,marginBottom:12}}>
-            <input value={newCategory} onChange={(e)=>setNewCategory(e.target.value)} placeholder="Yeni kategori adı" style={{flex:1,padding:"9px 11px",fontSize:12,border:bd,borderRadius:6,outline:"none",background:C.card,fontFamily:sans}} />
-            <button onClick={addCategory} style={{padding:"9px 12px",fontSize:12,fontWeight:700,border:"none",borderRadius:6,background:C.dark,color:"#fff",cursor:"pointer"}}>Kategori Ekle</button>
+          <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:12,alignItems:"stretch"}}>
+            <input value={newCategory} onChange={(e)=>setNewCategory(e.target.value)} placeholder="Yeni kategori adı" style={{flex:"1 1 180px",minWidth:0,padding:"9px 11px",fontSize:12,border:bd,borderRadius:6,outline:"none",background:C.card,fontFamily:sans}} />
+            <button type="button" onClick={addCategory} style={{padding:"9px 12px",fontSize:12,fontWeight:700,border:"none",borderRadius:6,background:C.dark,color:"#fff",cursor:"pointer",flex:"0 1 auto",alignSelf:"center"}}>Kategori Ekle</button>
           </div>
           {categories.map(cat=>(<div key={cat.k} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 14px",border:bd,borderRadius:6,marginBottom:8}}>
             <span style={{flex:1,fontSize:13,fontWeight:600,color:C.dark}}>{cat.l}</span>
