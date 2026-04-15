@@ -6,7 +6,10 @@ if [ -z "${IFRAME_ALLOWED_ORIGIN}" ]; then
   export IFRAME_ALLOWED_ORIGIN="'none'"
 fi
 
-if [ -z "${NGINX_PORT:-}" ]; then
+# Railway / Fly / Render: reverse proxy $PORT'a yönlendirir; nginx aynı portta dinlemeli (aksi halde 502).
+if [ -n "${PORT:-}" ]; then
+  export NGINX_PORT="$PORT"
+elif [ -z "${NGINX_PORT:-}" ]; then
   export NGINX_PORT="8080"
 fi
 
