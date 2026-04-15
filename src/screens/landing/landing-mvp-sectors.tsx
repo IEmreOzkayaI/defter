@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { C, bd, mono, sans } from '@/shared/constants/demo.constants';
 import type { SectorRoadmap } from '@/shared/types/demo.types';
@@ -15,16 +15,35 @@ export interface SectorPreview {
 
 const PRIORITY_IDS = ['cafe', 'ps', 'net', 'hamam', 'bilardo', 'kuru', 'otopark'];
 
-export function LandingMvpSectors({ sectors }: { sectors: SectorPreview[] }) {
+export function LandingMvpSectors({
+  sectors,
+  selectedSectorId,
+  onSelectSector,
+}: {
+  sectors: SectorPreview[];
+  selectedSectorId?: string;
+  onSelectSector?: (sectorId: string) => void;
+}) {
   const selectable = useMemo(() => {
     const allowed = sectors.filter((sector) => sector.roadmap !== 'out');
     const byPriority = PRIORITY_IDS.map((id) => allowed.find((sector) => sector.id === id)).filter(Boolean) as SectorPreview[];
     if (byPriority.length > 0) return byPriority;
     return allowed.slice(0, 7);
   }, [sectors]);
-  const [selectedSectorId, setSelectedSectorId] = useState<string>(selectable[0]?.id ?? '');
-  const selected = selectable.find((sector) => sector.id === selectedSectorId) ?? selectable[0];
+  const [internalSelectedId, setInternalSelectedId] = useState<string>(selectable[0]?.id ?? '');
+  const activeSectorId = selectedSectorId ?? internalSelectedId;
+  const selected = selectable.find((sector) => sector.id === activeSectorId) ?? selectable[0];
   const showMeteredTip = selected && (selected.id === 'ps' || selected.id === 'net');
+
+  useEffect(() => {
+    if (!selectable.length) return;
+    const hasActive = selectable.some((sector) => sector.id === activeSectorId);
+    if (!hasActive) {
+      const firstId = selectable[0].id;
+      setInternalSelectedId(firstId);
+      onSelectSector?.(firstId);
+    }
+  }, [activeSectorId, onSelectSector, selectable]);
 
   if (!selected) return null;
 
@@ -40,7 +59,10 @@ export function LandingMvpSectors({ sectors }: { sectors: SectorPreview[] }) {
             <button
               key={sector.id}
               type="button"
-              onClick={() => setSelectedSectorId(sector.id)}
+              onClick={() => {
+                setInternalSelectedId(sector.id);
+                onSelectSector?.(sector.id);
+              }}
               style={{
                 padding: '8px 12px',
                 borderRadius: 999,

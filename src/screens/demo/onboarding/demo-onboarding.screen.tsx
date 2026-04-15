@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import {
   APP_ONBOARD_STEPS,
@@ -21,10 +21,13 @@ function modeFromParam(p: string | undefined): DemoMode {
 export default function DemoOnboardingScreen() {
   const navigate = useNavigate();
   const { mode: modeParam } = useParams();
+  const [searchParams] = useSearchParams();
   const mode = modeFromParam(modeParam);
+  const requestedSector = searchParams.get('sector') ?? 'cafe';
+  const initialSector = hasTemplateForSector(requestedSector) ? requestedSector : 'cafe';
 
   const [step, setStep] = useState(0);
-  const [sector, setSector] = useState('cafe');
+  const [sector, setSector] = useState(initialSector);
   const [businessName, setBusinessName] = useState('Defter Demo Şubesi');
   const [sessionLabel, setSessionLabel] = useState('Kabine');
   const current = APP_ONBOARD_STEPS[step];

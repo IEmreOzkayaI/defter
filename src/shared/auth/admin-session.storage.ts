@@ -1,11 +1,15 @@
 const SESSION_KEY = 'defter_admin_session_v1';
 
 export function isAdminSessionActive(): boolean {
-  return sessionStorage.getItem(SESSION_KEY) === '1';
+  return Boolean(sessionStorage.getItem(SESSION_KEY));
 }
 
-export function setAdminSessionActive(): void {
-  sessionStorage.setItem(SESSION_KEY, '1');
+export function setAdminSessionActive(authorization: string): void {
+  sessionStorage.setItem(SESSION_KEY, authorization);
+}
+
+export function getAdminSessionAuthorization(): string | null {
+  return sessionStorage.getItem(SESSION_KEY);
 }
 
 export function clearAdminSession(): void {

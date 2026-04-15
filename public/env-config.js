@@ -1,0 +1,1 @@
+window.__DEFTER_RUNTIME_CONFIG__ = window.__DEFTER_RUNTIME_CONFIG__ || {};

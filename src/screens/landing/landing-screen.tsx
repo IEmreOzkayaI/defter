@@ -7,14 +7,24 @@ import { FAQ_LANDING_ITEMS } from '@/shared/seo/faq-landing.data';
 import { LandingHeroMedia } from '@/screens/landing/landing-hero-media';
 import { LandingMvpSectors } from '@/screens/landing/landing-mvp-sectors';
 import { LandingProductStory } from '@/screens/landing/landing-product-story';
-import { appendContactLead } from '@/shared/storage/contact-leads.storage';
+import { createWaitlistLead } from '@/shared/api/waitlist.api';
 import { LandingJsonLd } from '@/shared/seo/landing-json-ld';
 
 export default function LandingScreen() {
   const [scrollY, setScrollY] = useState(0);
   const [showContact, setShowContact] = useState(false);
+  const [contactIntent, setContactIntent] = useState<'start' | 'walkthrough'>('start');
   const [showDemoPicker, setShowDemoPicker] = useState(false);
+  const [selectedSectorId, setSelectedSectorId] = useState('cafe');
   const ref = useRef<HTMLDivElement>(null);
+  const demoTemplateSectors = new Set(['cafe', 'ps', 'net', 'hamam', 'bilardo']);
+  const selectedSector = SECTORS.find((sector) => sector.id === selectedSectorId) ?? SECTORS[0];
+  const selectedDemoSectorId = demoTemplateSectors.has(selectedSectorId) ? selectedSectorId : 'cafe';
+  const selectedSectorName = selectedSector?.name ?? 'Kafe & Restoran';
+  const openContact = (intent: 'start' | 'walkthrough') => {
+    setContactIntent(intent);
+    setShowContact(true);
+  };
 
   useEffect(() => {
     const el = ref.current; if (!el) return;
@@ -53,9 +63,13 @@ export default function LandingScreen() {
 
       <LandingJsonLd />
 
-      {showContact && <ContactModal onClose={() => setShowContact(false)} />}
+      {showContact && <ContactModal onClose={() => setShowContact(false)} intent={contactIntent} />}
       {showDemoPicker && (
-        <DemoPickerModal onClose={() => setShowDemoPicker(false)} />
+        <DemoPickerModal
+          onClose={() => setShowDemoPicker(false)}
+          selectedSectorId={selectedDemoSectorId}
+          selectedSectorName={selectedSectorName}
+        />
       )}
 
       {/* NAV */}
@@ -72,30 +86,10 @@ export default function LandingScreen() {
               <span style={{ fontSize: 22, fontWeight: 700, letterSpacing: -1, color: C.dark }}>defter</span>
               <span style={{ fontSize: 10, color: C.light, fontFamily: mono, letterSpacing: 1 }}>v1.0</span>
             </div>
-            <nav aria-label="Bölümler" style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
-              <a href="#urun-akisi" style={{ fontSize: 12, fontWeight: 500, color: C.mid, textDecoration: "none", whiteSpace: "nowrap" }}>
-                Ürün akışı
-              </a>
-              <a href="#sektorler" style={{ fontSize: 12, fontWeight: 500, color: C.mid, textDecoration: "none", whiteSpace: "nowrap" }}>
-                Sektörler
-              </a>
-              <a href="#ozellikler" style={{ fontSize: 12, fontWeight: 500, color: C.mid, textDecoration: "none", whiteSpace: "nowrap" }}>
-                Özellikler
-              </a>
-            </nav>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
-            {/* Gecici: landing login/giris aksiyonlari kapatildi.
-            {landingUser ? (
-              <span style={{ padding: "8px 18px", fontSize: 12, fontWeight: 500, color: C.mid, fontFamily: mono, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={landingUser.email}>{landingUser.email}</span>
-            ) : (
-              <button type="button" onClick={() => onOpenLogin?.()} className="ghost" style={{ padding: "8px 18px", fontSize: 13, fontWeight: 600, borderRadius: 6, border: `1.5px solid ${C.border}`, background: "transparent", color: C.dark, cursor: "pointer", transition: "all .2s" }}>Giriş</button>
-            )}
-            {landingUser && (
-              <button type="button" onClick={onLogout} style={{ padding: "8px 12px", fontSize: 12, fontWeight: 600, borderRadius: 6, border: "none", background: "transparent", color: C.light, cursor: "pointer" }}>Çıkış</button>
-            )} */}
-            <button onClick={() => setShowDemoPicker(true)} className="ghost" style={{ padding: "8px 18px", fontSize: 13, fontWeight: 600, borderRadius: 6, border: `1.5px solid ${C.dark}`, background: "transparent", color: C.dark, cursor: "pointer", transition: "all .2s" }}>Demo</button>
-            <button onClick={() => setShowContact(true)} className="cta" style={{ padding: "8px 18px", fontSize: 13, fontWeight: 600, borderRadius: 6, border: "none", background: C.dark, color: "#fff", cursor: "pointer", transition: "all .2s" }}>Başla</button>
+            <button onClick={() => setShowDemoPicker(true)} className="ghost" style={{ padding: "8px 18px", fontSize: 13, fontWeight: 600, borderRadius: 6, border: `1.5px solid ${C.dark}`, background: "transparent", color: C.dark, cursor: "pointer", transition: "all .2s" }}>Canlı Demo</button>
+            <button onClick={() => openContact('start')} className="cta" style={{ padding: "8px 18px", fontSize: 13, fontWeight: 600, borderRadius: 6, border: "none", background: C.dark, color: "#fff", cursor: "pointer", transition: "all .2s" }}>Başla</button>
           </div>
         </div>
       </nav>
@@ -111,10 +105,11 @@ export default function LandingScreen() {
           background: `linear-gradient(180deg, ${C.accentSoft} 0%, ${C.bg} 48%, ${C.bg} 100%)`,
         }}
       >
-        <div style={{ display: "flex", flexDirection: "column", gap: "clamp(28px,5vw,52px)" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "clamp(18px,4vw,40px)", alignItems: "stretch" }}>
           <div className="fu" style={{ maxWidth: 720 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 2, color: C.light, fontFamily: mono, marginBottom: 16 }}>
-              KAĞIT ADİSYONUN DİJİTALİ
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 999, border: bd, background: C.card, marginBottom: 16 }}>
+              <span aria-hidden style={{ width: 8, height: 8, borderRadius: 999, background: C.dark, display: "inline-block" }} />
+              <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: 1.4, color: C.mid, fontFamily: mono }}>DİJİTAL ADİSYON</span>
             </div>
             <h1
               style={{
@@ -126,66 +121,218 @@ export default function LandingScreen() {
                 marginBottom: 18,
               }}
             >
-              Fişe ne yazıyorsanız,
+              Kağıttaki hızınız
               <br />
-              ekranda da görünür.
+              ekranda da devam etsin.
             </h1>
             <p style={{ fontSize: "clamp(16px, 1.85vw, 19px)", lineHeight: 1.55, color: C.dark, marginBottom: 14 }}>
-              <strong>Defter</strong> randevu değil, CRM değil: açık işlem açın, içine ürün ve hizmet yazın, süreçte tutun, tahsilatla kapatın. Kağıt
-              adisyon, kabin fişi veya iş takip kartının aynısı — dijital.
+              <strong>Defter</strong> ile işlemi saniyeler içinde açın, ürün ve hizmetleri ekleyin, açık hesapları tek ekranda takip edin ve tahsilatla
+              güvenle kapatın.
             </p>
-            <p className="fu1" style={{ fontSize: "clamp(15px,1.75vw,18px)", lineHeight: 1.65, color: C.mid, maxWidth: 560 }}>
-              Kafe, PlayStation / internet cafe, hamam veya bilardo — Faz 1 şablonlarıyla demoyu deneyin. Yol haritasındaki diğer sektörler şablon sırasıyla eklenir.
+            <p className="fu1" style={{ fontSize: "clamp(15px,1.75vw,18px)", lineHeight: 1.65, color: C.mid, maxWidth: 600, marginBottom: 16 }}>
+              Kafe, PlayStation / internet cafe, hamam ve bilardo gibi kağıtla yürüyen işletmelerde ekip alışkanlığını bozmadan dijitale geçiş sağlar.
             </p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 18 }}>
+              {["İşlem aç-kapat", "Açık hesap takibi", "Tek panel tahsilat"].map((item) => (
+                <span key={item} style={{ padding: "7px 11px", fontSize: 12, fontWeight: 600, borderRadius: 999, border: bd, background: C.card, color: C.mid }}>
+                  {item}
+                </span>
+              ))}
+            </div>
+
+            <div className="fu2" style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12, alignItems: "center" }}>
+              <button
+                onClick={() => openContact('start')}
+                className="cta"
+                style={{
+                  padding: "15px 36px",
+                  fontSize: 15,
+                  width: "100%",
+                  fontWeight: 700,
+                  borderRadius: 10,
+                  border: "none",
+                  background: C.dark,
+                  color: "#fff",
+                  cursor: "pointer",
+                  transition: "all .2s",
+                }}
+              >
+                Hemen Başla
+              </button>
+              <button
+                onClick={() => setShowDemoPicker(true)}
+                className="ghost"
+                style={{
+                  padding: "15px 36px",
+                  width: "100%",
+                  fontSize: 15,
+                  fontWeight: 600,
+                  borderRadius: 10,
+                  border: `1.5px solid ${C.border}`,
+                  background: "transparent",
+                  color: C.dark,
+                  cursor: "pointer",
+                  transition: "all .2s",
+                }}
+              >
+                Canlı Demo →
+              </button>
+              <button
+                onClick={() => openContact('walkthrough')}
+                className="ghost"
+                style={{
+                  gridColumn: "span 2",
+                  width: "100%",
+                  padding: "13px 18px",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  borderRadius: 10,
+                  border: `1.5px solid ${C.border}`,
+                  background: C.card,
+                  color: C.mid,
+                  cursor: "pointer",
+                  transition: "all .2s",
+                }}
+              >
+                Bana özel 10 dk canlı anlatım
+              </button>
+            </div>
           </div>
 
-          <div className="fu2" style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-            <button
-              onClick={() => setShowContact(true)}
-              className="cta"
+          <aside
+            className="fu3"
+            style={{
+              border: bd,
+              borderRadius: 14,
+              background: C.card,
+              padding: "clamp(20px,3vw,28px)",
+              alignSelf: "stretch",
+              display: "flex",
+              flexDirection: "column",
+              gap: 24,
+              minWidth: 240,
+            }}
+          >
+            <div
               style={{
-                padding: "15px 36px",
-                fontSize: 15,
-                fontWeight: 700,
-                borderRadius: 10,
-                border: "none",
-                background: C.dark,
-                color: "#fff",
-                cursor: "pointer",
-                transition: "all .2s",
+                fontSize: 10,
+                fontFamily: mono,
+                letterSpacing: 1.2,
+                color: C.light,
+                marginBottom: 14,
               }}
             >
-              Hemen Başla
-            </button>
-            <button
-              onClick={() => setShowDemoPicker(true)}
-              className="ghost"
+              DEFTER İLE BİR İŞLEM
+            </div>
+            <div
               style={{
-                padding: "15px 36px",
-                fontSize: 15,
-                fontWeight: 600,
-                borderRadius: 10,
-                border: `1.5px solid ${C.border}`,
-                background: "transparent",
-                color: C.dark,
-                cursor: "pointer",
-                transition: "all .2s",
+                display: "flex",
+                flexDirection: "column",
+                gap: 16,
+                marginBottom: 2,
               }}
             >
-              Canlı Demo →
-            </button>
-          </div>
-
-          <div className="fu3" style={{ display: "flex", gap: "clamp(24px,4vw,48px)", flexWrap: "wrap" }}>
-            {[{ v: "5", l: "Faz 1 şablon" }, { v: "∞", l: "İşlem" }, { v: "1×", l: "Yıllık ödeme" }].map((s, i) => (
-              <div key={i}>
-                <div style={{ fontSize: 30, fontWeight: 700, fontFamily: mono, color: C.dark, letterSpacing: -1 }}>{s.v}</div>
-                <div style={{ fontSize: 11, color: C.light, marginTop: 4 }}>{s.l}</div>
-              </div>
-            ))}
-          </div>
+              {ONBOARD_STEPS.map((step, i) => (
+                <div
+                  key={step.title}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "32px 1fr",
+                    gap: 12,
+                    alignItems: "flex-start",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 8,
+                      background: C.accentSoft,
+                      color: C.dark,
+                      fontFamily: mono,
+                      fontSize: 13,
+                      fontWeight: 700,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginTop: 2,
+                    }}
+                  >
+                    {String(i + 1).padStart(2, "0")}
+                  </div>
+                  <div>
+                    <div
+                      style={{
+                        fontSize: 15,
+                        fontWeight: 700,
+                        color: C.dark,
+                        marginBottom: 4,
+                      }}
+                    >
+                      {step.title}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: C.mid,
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      {step.desc}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div
+              style={{
+                borderTop: `1px solid ${C.border}`,
+                paddingTop: 14,
+                display: "flex",
+                flexDirection: "row",
+                gap: 32,
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                marginTop: 4,
+              }}
+            >
+              {[
+                { v: "30 sn", l: "ilk kayıt" },
+                { v: "1 gün", l: "alışma süresi" },
+                { v: "∞", l: "işlem kaydı" },
+              ].map((s) => (
+                <div key={s.l} style={{ minWidth: 60 }}>
+                  <div
+                    style={{
+                      fontSize: 22,
+                      fontWeight: 700,
+                      fontFamily: mono,
+                      color: C.dark,
+                      letterSpacing: -0.8,
+                      textAlign: "center",
+                    }}
+                  >
+                    {s.v}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 10,
+                      color: C.light,
+                      marginTop: 4,
+                      textAlign: "center",
+                      letterSpacing: 0.2,
+                    }}
+                  >
+                    {s.l}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </aside>
+     
         </div>
       </section>
+
 
       {/* 1b — ÜRÜN AKIŞI */}
       <section
@@ -237,6 +384,42 @@ export default function LandingScreen() {
         <LandingHeroMedia />
       </section>
 
+      {/* 2b — HIZLI SORULAR */}
+      <section
+        id="hizli-sorular"
+        style={{
+          padding: "clamp(24px,4.5vw,42px) clamp(16px,4vw,48px)",
+          maxWidth: 1000,
+          margin: "0 auto",
+        }}
+      >
+        <div style={{ border: bd, borderRadius: 12, background: C.card, padding: "clamp(16px,3vw,24px)" }}>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1.6, color: C.light, fontFamily: mono, marginBottom: 12 }}>
+            HIZLI CEVAPLAR
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10, marginBottom: 14 }}>
+            {[
+              ["Kurulum zor mu?", "Hayır. Şablonla açıp aynı gün kullanmaya başlarsınız."],
+              ["Ekip zorlanır mı?", "Kağıttaki akışın aynısı olduğu için eğitim süresi çok kısadır."],
+              ["Mevcut düzen bozulur mu?", "Hayır. Sadece defter kağıttan ekrana taşınır."],
+            ].map(([q, a]) => (
+              <article key={q} style={{ border: bd, borderRadius: 10, padding: "12px 14px", background: C.bg }}>
+                <h3 style={{ fontSize: 14, fontWeight: 700, color: C.dark, marginBottom: 4 }}>{q}</h3>
+                <p style={{ fontSize: 12, color: C.mid, margin: 0, lineHeight: 1.5 }}>{a}</p>
+              </article>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => openContact('walkthrough')}
+            className="cta"
+            style={{ width: "100%", padding: "12px 20px", fontSize: 13, fontWeight: 700, borderRadius: 8, border: "none", background: C.dark, color: "#fff", cursor: "pointer" }}
+          >
+            Bana özel 10 dk canlı anlatım
+          </button>
+        </div>
+      </section>
+
       {/* 3 — NASIL ÇALIŞIR */}
       <section
         id="nasil-baslanir"
@@ -279,7 +462,7 @@ export default function LandingScreen() {
           <br />
           Sadece size uygun akışı gösterelim.
         </h2>
-        <LandingMvpSectors sectors={SECTORS} />
+        <LandingMvpSectors sectors={SECTORS} selectedSectorId={selectedSectorId} onSelectSector={setSelectedSectorId} />
       </section>
 
       {/* 5 — ÖZELLİKLER */}
@@ -342,8 +525,8 @@ export default function LandingScreen() {
           Yıllık tek ödeme; demo ile içeriği görüp karar verin.
         </p>
         <div className="pricing-grid" style={{ maxWidth: 920, margin: "0 auto" }}>
-          <PricingCard label="TEMEL" price="10.000 ₺" sub="" desc="Yılda bir ödeme, geri kalanı sınırsız." features={["Sınırsız operasyon","Tüm sektör şablonları","Hizmet & kategori yönetimi","Analitik & raporlama","Responsive web app"]} onAction={() => setShowContact(true)} />
-          <PricingCard label="TEMEL + POS" price="20.000 ₺" sub="" desc="Otomasyon + entegre POS ödeme." features={["Temel'deki her şey","POS cihaz entegrasyonu","Çoklu cihaz desteği","Ödeme durumu takibi","Cihaz yönetim paneli"]} highlight onAction={() => setShowContact(true)} />
+          <PricingCard label="TEMEL" price="10.000 ₺" sub="" desc="Yılda bir ödeme, geri kalanı sınırsız." features={["Sınırsız operasyon","Tüm sektör şablonları","Hizmet & kategori yönetimi","Analitik & raporlama","Responsive web app"]} onAction={() => openContact('start')} />
+          <PricingCard label="TEMEL + POS" price="20.000 ₺" sub="" desc="Otomasyon + entegre POS ödeme." features={["Temel'deki her şey","POS cihaz entegrasyonu","Çoklu cihaz desteği","Ödeme durumu takibi","Cihaz yönetim paneli"]} highlight onAction={() => openContact('start')} />
         </div>
       </section>
 
@@ -386,11 +569,36 @@ export default function LandingScreen() {
         <h2 style={{ fontSize: "clamp(28px,5vw,48px)", fontWeight: 700, letterSpacing: -1.5, color: C.dark, marginBottom: 16, lineHeight: 1.1 }}>Kağıt defter devri bitti.</h2>
         <p style={{ fontSize: 16, color: C.mid, marginBottom: 32, maxWidth: 420, margin: "0 auto 32px" }}>İşletmenizi dakikalar içinde dijitale taşıyın.</p>
         <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-          <button onClick={() => setShowContact(true)} className="cta" style={{ padding: "16px 40px", fontSize: 16, fontWeight: 700, borderRadius: 8, border: "none", background: C.dark, color: "#fff", cursor: "pointer", transition: "all .2s" }}>Ücretsiz Dene</button>
+          <button onClick={() => openContact('start')} className="cta" style={{ padding: "16px 40px", fontSize: 16, fontWeight: 700, borderRadius: 8, border: "none", background: C.dark, color: "#fff", cursor: "pointer", transition: "all .2s" }}>Ücretsiz Dene</button>
           <button onClick={() => setShowDemoPicker(true)} className="ghost" style={{ padding: "16px 40px", fontSize: 16, fontWeight: 600, borderRadius: 8, border: `1.5px solid ${C.border}`, background: "transparent", color: C.dark, cursor: "pointer", transition: "all .2s" }}>Canlı Demo →</button>
+          <button onClick={() => openContact('walkthrough')} className="ghost" style={{ padding: "16px 28px", fontSize: 15, fontWeight: 600, borderRadius: 8, border: `1.5px solid ${C.border}`, background: C.card, color: C.mid, cursor: "pointer", transition: "all .2s" }}>10 dk canlı anlatım</button>
         </div>
       </section>
       </main>
+
+      <button
+        type="button"
+        onClick={() => setShowDemoPicker(true)}
+        className="cta"
+        style={{
+          position: "fixed",
+          right: 18,
+          bottom: 18,
+          zIndex: 120,
+          padding: "11px 16px",
+          fontSize: 13,
+          fontWeight: 700,
+          borderRadius: 999,
+          border: "none",
+          background: C.dark,
+          color: "#fff",
+          boxShadow: "0 10px 24px rgba(0,0,0,.2)",
+          cursor: "pointer",
+          transition: "all .2s",
+        }}
+      >
+        Canlı Demo →
+      </button>
 
       {/* FOOTER */}
       <footer style={{ borderTop: bd, padding: "32px clamp(16px,4vw,48px)", maxWidth: 1200, margin: "0 auto" }}>
@@ -651,17 +859,21 @@ function PricingCard({
 }
 
 /* ── CONTACT MODAL ── */
-function ContactModal({ onClose }: { onClose: () => void }) {
+function ContactModal({ onClose, intent }: { onClose: () => void; intent: 'start' | 'walkthrough' }) {
   const [name, setName] = useState(""); const [phone, setPhone] = useState(""); const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
   const ok = name.trim() && phone.trim();
+  const isWalkthrough = intent === 'walkthrough';
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(250,250,248,.92)", zIndex: 9000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, animation: "fadeIn .15s ease" }}>
       <div style={{ background: C.card, border: `2px solid ${C.dark}`, borderRadius: 14, padding: 32, width: "100%", maxWidth: 420, animation: "fadeUp .2s ease", position: "relative" }}>
         <button onClick={onClose} style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", fontSize: 20, color: C.light, cursor: "pointer" }}>×</button>
         {!sent ? (<>
           <div style={{ fontSize: 10, color: C.light, letterSpacing: 1.5, fontFamily: mono, marginBottom: 8 }}>İLETİŞİM</div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: C.dark, marginBottom: 4 }}>Hemen Başlayın</div>
-          <div style={{ fontSize: 13, color: C.mid, marginBottom: 24, lineHeight: 1.5 }}>Bilgilerinizi bırakın, 24 saat içinde size ulaşalım.</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: C.dark, marginBottom: 4 }}>{isWalkthrough ? '10 dk Canlı Anlatım' : 'Hemen Başlayın'}</div>
+          <div style={{ fontSize: 13, color: C.mid, marginBottom: 24, lineHeight: 1.5 }}>
+            {isWalkthrough ? 'Ekibinize özel kısa bir canlı tur planlayalım.' : 'Bilgilerinizi bırakın, 24 saat içinde size ulaşalım.'}
+          </div>
           <div style={{ marginBottom: 14 }}>
             <div style={{ fontSize: 10, color: C.light, fontFamily: mono, letterSpacing: 1, marginBottom: 5 }}>AD SOYAD *</div>
             <input value={name} onChange={e => setName(e.target.value)} placeholder="Ahmet Yılmaz" style={{ width: "100%", padding: "11px 13px", fontSize: 14, border: bd, borderRadius: 6, outline: "none", fontFamily: sans, background: C.bg }} />
@@ -673,14 +885,25 @@ function ContactModal({ onClose }: { onClose: () => void }) {
           <button
             type="button"
             onClick={() => {
-              if (!ok) return;
-              appendContactLead(name.trim(), phone.trim());
-              setSent(true);
+              if (!ok || sending) return;
+              setSending(true);
+              void createWaitlistLead({
+                full_name: name.trim(),
+                phone_number: phone.trim(),
+                status: 'new',
+                note: isWalkthrough ? 'Talep tipi: 10 dk canlı anlatım' : 'Talep tipi: Hemen başla',
+              })
+                .then(() => {
+                  setSent(true);
+                })
+                .finally(() => {
+                  setSending(false);
+                });
             }}
             className="cta"
-            style={{ width: "100%", padding: 14, fontSize: 14, fontWeight: 700, borderRadius: 8, border: "none", background: ok ? C.dark : C.border, color: ok ? "#fff" : C.light, cursor: ok ? "pointer" : "not-allowed", transition: "all .2s" }}
+            style={{ width: "100%", padding: 14, fontSize: 14, fontWeight: 700, borderRadius: 8, border: "none", background: ok ? C.dark : C.border, color: ok ? "#fff" : C.light, cursor: ok && !sending ? "pointer" : "not-allowed", transition: "all .2s", opacity: sending ? 0.75 : 1 }}
           >
-            Gönder
+            {sending ? 'Gönderiliyor…' : isWalkthrough ? 'Anlatım Talep Et' : 'Gönder'}
           </button>
         </>) : (
           <div style={{ textAlign: "center", padding: "20px 0", animation: "fadeUp .3s ease" }}>
@@ -696,7 +919,15 @@ function ContactModal({ onClose }: { onClose: () => void }) {
 }
 
 /* ── DEMO PICKER ── */
-function DemoPickerModal({ onClose }: { onClose: () => void }) {
+function DemoPickerModal({
+  onClose,
+  selectedSectorId,
+  selectedSectorName,
+}: {
+  onClose: () => void;
+  selectedSectorId: string;
+  selectedSectorName: string;
+}) {
   const linkBase = {
     display: 'block' as const,
     width: '100%',
@@ -710,13 +941,16 @@ function DemoPickerModal({ onClose }: { onClose: () => void }) {
         <button type="button" onClick={onClose} style={{ position: "absolute", top: 12, right: 12, background: "none", border: "none", fontSize: 22, color: C.light, cursor: "pointer", padding: 8, lineHeight: 1 }} aria-label="Kapat">×</button>
         <div style={{ fontSize: 10, color: C.light, letterSpacing: 1.5, fontFamily: mono, marginBottom: 8, paddingRight: 36 }}>DEMO SEÇ</div>
         <div style={{ fontSize: "clamp(18px, 4vw, 22px)", fontWeight: 700, color: C.dark, marginBottom: 4, lineHeight: 1.2 }}>Hangi planı denemek istersiniz?</div>
-        <div style={{ fontSize: 13, color: C.mid, marginBottom: 20, lineHeight: 1.45 }}>Faz 1 şablonlarından biriyle başlayın — kağıt adisyon çizgisinde, demo verilerle dolu.</div>
+        <div style={{ fontSize: 13, color: C.mid, marginBottom: 6, lineHeight: 1.45 }}>Demo verilerle dolu, istediğiniz gibi kurcalayın.</div>
+        <div style={{ fontSize: 12, color: C.light, marginBottom: 20, lineHeight: 1.45 }}>
+          Başlangıç sektörü: <strong style={{ color: C.mid }}>{selectedSectorName}</strong>
+        </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <Link to="/demo/onboarding/temel" className="sc" style={{ ...linkBase, padding: "16px 18px", borderRadius: 10, border: bd, background: C.bg, textAlign: "left", cursor: "pointer", transition: "all .15s" }}>
+          <Link to={`/demo/onboarding/temel?sector=${selectedSectorId}`} className="sc" style={{ ...linkBase, padding: "16px 18px", borderRadius: 10, border: bd, background: C.bg, textAlign: "left", cursor: "pointer", transition: "all .15s" }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: C.dark, marginBottom: 3 }}>Temel</div>
             <div style={{ fontSize: 12, color: C.mid, lineHeight: 1.4 }}>Operasyon, hizmetler, analitik — POS olmadan</div>
           </Link>
-          <Link to="/demo/onboarding/pos" className="sc" style={{ ...linkBase, padding: "16px 18px", paddingTop: 22, borderRadius: 10, border: `2px solid ${C.dark}`, background: C.card, textAlign: "left", cursor: "pointer", transition: "all .15s", position: "relative" }}>
+          <Link to={`/demo/onboarding/pos?sector=${selectedSectorId}`} className="sc" style={{ ...linkBase, padding: "16px 18px", paddingTop: 22, borderRadius: 10, border: `2px solid ${C.dark}`, background: C.card, textAlign: "left", cursor: "pointer", transition: "all .15s", position: "relative" }}>
             <div style={{ position: "absolute", top: -1, right: 12, background: C.dark, color: "#fff", padding: "3px 10px", borderRadius: "0 0 5px 5px", fontSize: 9, fontWeight: 600 }}>+ POS</div>
             <div style={{ fontSize: 15, fontWeight: 700, color: C.dark, marginBottom: 3 }}>Temel + POS</div>
             <div style={{ fontSize: 12, color: C.mid, lineHeight: 1.4 }}>Her şey dahil — POS cihaz yönetimi ve ödeme gönderme</div>
