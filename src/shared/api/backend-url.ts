@@ -12,31 +12,34 @@ const runtimeBaseUrl = window.__DEFTER_RUNTIME_CONFIG__?.VITE_BACKEND_BASE_URL?.
 const buildTimeBaseUrl = import.meta.env.VITE_BACKEND_BASE_URL?.trim();
 
 /**
- * Production'da mutlak URL olmalı. Şema yoksa tarayıcı göreli path sanar:
- * `defter-backend.../v1/...` → `https://frontend.up.railway.app/defter-backend.../v1/...` → nginx 405.
+ * Doğrudan API origin’i (CORS gerekir). Şema yoksa tarayıcı göreli path sanar → nginx 405.
+ * Göreli path: `/api` gibi — nginx proxy ile aynı origin.
  */
 function normalizeProductionBackendBase(raw: string): string {
-  let base = raw.trim().replace(/\/+$/, '');
+  const base = raw.trim().replace(/\/+$/, '');
   if (!base) return '';
 
-  if (!/^https?:\/\//i.test(base)) {
-    base = `https://${base}`;
+  if (base.startsWith('/') && !base.startsWith('//')) {
+    return base;
   }
 
-  if (typeof window !== 'undefined' && /\.railway\.internal\b/i.test(base)) {
+  let absolute = base;
+  if (!/^https?:\/\//i.test(absolute)) {
+    absolute = `https://${absolute}`;
+  }
+
+  if (typeof window !== 'undefined' && /\.railway\.internal\b/i.test(absolute)) {
     // eslint-disable-next-line no-console
     console.error(
-      '[Defter] VITE_BACKEND_BASE_URL must be the API public HTTPS URL (…up.railway.app), not *.railway.internal — internal hostnames only work between Railway containers, not in the browser.',
+      '[Defter] Tarayıcıdan *.railway.internal kullanılamaz. Boş bırakıp nginx /api proxy kullanın veya public https API URL verin.',
     );
   }
 
-  return base;
+  return absolute;
 }
 
-const rawBaseUrl = normalizeProductionBackendBase(runtimeBaseUrl || buildTimeBaseUrl || '');
+const fromEnv = (runtimeBaseUrl || buildTimeBaseUrl || '').trim();
+const normalizedProd = fromEnv ? normalizeProductionBackendBase(fromEnv) : '';
 
-export const BACKEND_BASE_URL = import.meta.env.DEV
-  ? '/api'
-  : rawBaseUrl.length > 0
-    ? rawBaseUrl
-    : '';
+/** Dev: Vite proxy. Prod: boş → nginx /api proxy (CORS yok); dolu → doğrudan API. */
+export const BACKEND_BASE_URL = import.meta.env.DEV ? '/api' : normalizedProd.length > 0 ? normalizedProd : '/api';

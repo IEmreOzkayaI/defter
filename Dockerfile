@@ -36,5 +36,7 @@ RUN chmod +x /docker-entrypoint.d/30-runtime-config.sh
 ENV NGINX_PORT=8080
 ENV IFRAME_ALLOWED_ORIGIN='none'
 ENV VITE_BACKEND_BASE_URL=
+# /api/ → upstream (sonunda /). Railway: https://…up.railway.app/ veya private http://….railway.internal:PORT/
+ENV BACKEND_PROXY_TARGET=
 
 EXPOSE 8080

@@ -6,7 +6,7 @@ services:
       args:
         VITE_SITE_URL: ${VITE_SITE_URL:-}
         VITE_LANDING_HERO_VIDEO: ${VITE_LANDING_HERO_VIDEO:-}
-        VITE_BACKEND_BASE_URL: ${VITE_BACKEND_BASE_URL:-http://localhost:3001}
+        VITE_BACKEND_BASE_URL: ${VITE_BACKEND_BASE_URL:-}
     image: defter-web:latest
     container_name: defter-web
     restart: unless-stopped
@@ -15,7 +15,9 @@ services:
     environment:
       NGINX_PORT: 8080
       IFRAME_ALLOWED_ORIGIN: ${IFRAME_ALLOWED_ORIGIN:-'none'}
-      VITE_BACKEND_BASE_URL: ${VITE_BACKEND_BASE_URL:-http://localhost:3001}
+      # Tarayıcı: boş → /api (nginx proxy). Build-arg VITE_BACKEND_BASE_URL vite build için kalabilir.
+      VITE_BACKEND_BASE_URL: ${VITE_BACKEND_BASE_URL:-}
+      BACKEND_PROXY_TARGET: ${BACKEND_PROXY_TARGET:-http://host.docker.internal:3001/}
     healthcheck:
       test: ['CMD-SHELL', 'wget -q -O - http://127.0.0.1:8080/healthz || exit 1']
       interval: 15s
