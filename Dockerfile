@@ -20,6 +20,11 @@ RUN pnpm run build
 
 FROM nginx:1.27-alpine AS runtime
 
+# Varsayılan: error_log /var/log/nginx/error.log → çoğu platformda stderr → "error" severity.
+# Master/worker notice + access loglarını stdout'a al (log router genelde INFO/text).
+RUN sed -i 's|error_log  /var/log/nginx/error.log notice;|error_log /dev/stdout notice;|' /etc/nginx/nginx.conf \
+  && sed -i 's|access_log  /var/log/nginx/access.log  main;|access_log /dev/stdout main;|' /etc/nginx/nginx.conf
+
 WORKDIR /usr/share/nginx/html
 
 COPY --from=build /app/dist ./
