@@ -8,8 +8,18 @@ declare global {
   }
 }
 
-const runtimeBaseUrl = window.__DEFTER_RUNTIME_CONFIG__?.VITE_BACKEND_BASE_URL?.trim();
-const buildTimeBaseUrl = import.meta.env.VITE_BACKEND_BASE_URL?.trim();
+/**
+ * `env-config.js` boş string yazdığında `"" || buildTime` yanlışlıkla build-time URL’e düşer → admin CORS.
+ * Key runtime’da tanımlıysa (boş dahil) sadece o değeri kullan.
+ */
+function resolveBackendBaseRaw(): string {
+  const cfg = typeof window !== 'undefined' ? window.__DEFTER_RUNTIME_CONFIG__ : undefined;
+  const fromRuntime = cfg !== undefined && 'VITE_BACKEND_BASE_URL' in cfg;
+  if (fromRuntime) {
+    return String(cfg!.VITE_BACKEND_BASE_URL ?? '').trim();
+  }
+  return String(import.meta.env.VITE_BACKEND_BASE_URL ?? '').trim();
+}
 
 /**
  * Doğrudan API origin’i (CORS gerekir). Şema yoksa tarayıcı göreli path sanar → nginx 405.
@@ -38,7 +48,7 @@ function normalizeProductionBackendBase(raw: string): string {
   return absolute;
 }
 
-const fromEnv = (runtimeBaseUrl || buildTimeBaseUrl || '').trim();
+const fromEnv = resolveBackendBaseRaw();
 const normalizedProd = fromEnv ? normalizeProductionBackendBase(fromEnv) : '';
 
 /** Dev: Vite proxy. Prod: boş → nginx /api proxy (CORS yok); dolu → doğrudan API. */
