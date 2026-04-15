@@ -4,18 +4,20 @@ import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } 
 import {
   C,
   bd,
-  getTemplatePreset,
   mono,
   POS_DEVICES,
   sans,
   SECTORS,
   WEEKLY,
 } from '@/shared/constants/demo.constants';
+import { buildDailySessionReport } from '@/domain/session/session-report';
+import { transitionStatus } from '@/domain/session/session.machine';
 import { fmt } from '@/shared/utils/format.util';
 import { mkSess, resetSessionIdCounterForTests } from '@/shared/utils/mk-session.util';
 import { getSessionsNavLabel } from '@/shared/utils/session-label.util';
 import { useThermaMobile } from '@/shared/hooks/use-therma-mobile.hook';
 import type { DemoMode, DemoServiceRow, DemoSetupPayload, LandingUser } from '@/shared/types/demo.types';
+import { resolveTemplateBySector } from '@/templates/template.resolver';
 
 export function DemoServiceDrawer({ pickerCats, cat, setCat, filtered, onAddService, onClose }) {
   return (
@@ -86,10 +88,14 @@ export function DemoMobileSessionDetail({
   sending,
   sentOk,
   setConfirmId,
-  hasPos,
+  canSendToPos,
+  canCloseSession,
+  canAddService,
   pickerCats,
   qtyBtn,
   sessionTotal,
+  addServiceLabel,
+  closeSessionLabel,
 }) {
   const [showDrawer, setShowDrawer] = useState(false);
   const total = sessionTotal(active);
@@ -112,7 +118,7 @@ export function DemoMobileSessionDetail({
             <div style={{ textAlign: "center", padding: "48px 20px", color: C.light, fontSize: 13, lineHeight: 1.5 }}>
               <div style={{ fontSize: 28, marginBottom: 8, opacity: 0.35 }}>—</div>
               Henüz hizmet yok
-              <div style={{ fontSize: 12, marginTop: 10 }}>Aşağıdan «Hizmet Ekle» ile başlayın.</div>
+              <div style={{ fontSize: 12, marginTop: 10 }}>Aşağıdan «{addServiceLabel}» ile başlayın.</div>
             </div>
           ) : (
             active.items.map((item) => (
@@ -141,30 +147,32 @@ export function DemoMobileSessionDetail({
             <span style={{ fontSize: 11, color: C.light, letterSpacing: 0.8, fontFamily: mono }}>TOPLAM</span>
             <span style={{ fontSize: 22, fontWeight: 700, fontFamily: mono, color: C.dark }}>{fmt(total)} ₺</span>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowDrawer(true)}
-            style={{
-              width: "100%",
-              marginBottom: 10,
-              padding: "11px 14px",
-              borderRadius: 6,
-              border: `1px dashed ${C.border}`,
-              background: C.accentSoft,
-              fontSize: 12,
-              fontWeight: 700,
-              color: C.dark,
-              letterSpacing: 0.3,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 6,
-              cursor: "pointer",
-            }}
-          >
-            <span style={{ fontSize: 16 }}>+</span> Hizmet Ekle
-          </button>
-          {hasPos ? (
+          {canAddService && (
+            <button
+              type="button"
+              onClick={() => setShowDrawer(true)}
+              style={{
+                width: "100%",
+                marginBottom: 10,
+                padding: "11px 14px",
+                borderRadius: 6,
+                border: `1px dashed ${C.border}`,
+                background: C.accentSoft,
+                fontSize: 12,
+                fontWeight: 700,
+                color: C.dark,
+                letterSpacing: 0.3,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                cursor: "pointer",
+              }}
+            >
+              <span style={{ fontSize: 16 }}>+</span> {addServiceLabel}
+            </button>
+          )}
+          {canSendToPos ? (
             <>
               <button
                 type="button"
@@ -215,31 +223,33 @@ export function DemoMobileSessionDetail({
                 >
                   {sending ? "GÖNDERİLİYOR..." : sentOk ? "GÖNDERİLDİ ✓" : "POS'A GÖNDER"}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => active.items.length > 0 && setConfirmId(active.id)}
-                  disabled={active.items.length === 0 || sending}
-                  style={{
-                    padding: "12px 14px",
-                    fontSize: 12,
-                    fontWeight: 700,
-                    letterSpacing: 0.4,
-                    border: bd,
-                    borderRadius: 5,
-                    background: "transparent",
-                    color: active.items.length === 0 ? C.light : C.dark,
-                    cursor: active.items.length === 0 || sending ? "not-allowed" : "pointer",
-                  }}
-                >
-                  ÇEK KAPAT
-                </button>
+                {canCloseSession && (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmId(active.id)}
+                    disabled={sending}
+                    style={{
+                      padding: "12px 14px",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      letterSpacing: 0.4,
+                      border: bd,
+                      borderRadius: 5,
+                      background: "transparent",
+                      color: sending ? C.light : C.dark,
+                      cursor: sending ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    {closeSessionLabel}
+                  </button>
+                )}
               </div>
             </>
-          ) : (
+          ) : canCloseSession ? (
             <button
               type="button"
-              onClick={() => active.items.length > 0 && setConfirmId(active.id)}
-              disabled={active.items.length === 0}
+              onClick={() => setConfirmId(active.id)}
+              disabled={false}
               style={{
                 width: "100%",
                 padding: 12,
@@ -248,14 +258,14 @@ export function DemoMobileSessionDetail({
                 letterSpacing: 0.5,
                 border: "none",
                 borderRadius: 5,
-                background: active.items.length === 0 ? C.accentSoft : C.dark,
-                color: active.items.length === 0 ? C.light : "#fff",
-                cursor: active.items.length === 0 ? "not-allowed" : "pointer",
+                background: C.dark,
+                color: "#fff",
+                cursor: "pointer",
               }}
             >
-              ÇEK KAPAT
+              {closeSessionLabel}
             </button>
-          )}
+          ) : null}
         </div>
       </div>
     </>
@@ -275,13 +285,27 @@ export function DemoApp({
   landingUser: LandingUser | null;
   onUserChange?: (u: LandingUser) => void;
 }) {
-  const template = setup?.template || getTemplatePreset("hamam");
   const sectorId = setup?.sector || "hamam";
+  const templateResolution = resolveTemplateBySector(sectorId);
+  const template = setup?.template || templateResolution.preset;
+  const templateMeta = templateResolution.template;
   const businessName = setup?.businessName || "Demo Şube";
   const sessionLabel = setup?.sessionLabel || template.resourceLabel || "Oturum";
-  const sessionsNavLabel = getSessionsNavLabel(template.resourceLabel || sessionLabel, sectorId);
+  const sessionsNavLabel =
+    templateMeta.labels.sessionsNav || getSessionsNavLabel(template.resourceLabel || sessionLabel, sectorId);
+  const addServiceLabel = templateMeta.labels.addServiceCta;
+  const closeSessionLabel = templateMeta.labels.closeSessionCta;
+  const resourceTitle = (templateMeta.resourceName || template.resourceLabel || sessionLabel || "Kaynak").toUpperCase();
+  const sessionSeed = {
+    sector: sectorId,
+    templateId: templateMeta.id,
+    sessionLabel: template.sessionLabel,
+    resourceLabel: template.resourceLabel,
+    timerMode: templateMeta.timer.mode,
+  };
+  const readyResources = templateMeta.resourcePreset;
   const [view, setView] = useState("sessions");
-  const [sessions, setSessions] = useState(() => [mkSess(`${sessionLabel} 1`), mkSess(`${sessionLabel} 2`)]);
+  const [sessions, setSessions] = useState(() => []);
   const [activeId, setActiveId] = useState<number | null>(null);
   const [cat, setCat] = useState("all");
   const [serviceCatalog, setServiceCatalog] = useState(() => template.services.map((s) => ({ kdv: 10, active: true, ...s })));
@@ -291,11 +315,15 @@ export function DemoApp({
     phone: landingUser?.phone || "",
     sector: setup?.sector || landingUser?.sector || sectorId,
     password: "",
+    defaultSliceMinutes: 60,
   }));
   const [toast, setToast] = useState(null);
   const [addingName, setAddingName] = useState(false);
   const [newName, setNewName] = useState("");
+  const [selectedPresetResource, setSelectedPresetResource] = useState(readyResources[0] || "");
+  const [selectedPackageId, setSelectedPackageId] = useState("");
   const [confirmId, setConfirmId] = useState(null);
+  const [expiryAlertId, setExpiryAlertId] = useState<number | null>(null);
   const [showPosModal, setShowPosModal] = useState(false);
   const [posTarget, setPosTarget] = useState(null);
   const [sending, setSending] = useState(false);
@@ -318,7 +346,7 @@ export function DemoApp({
   }, [landingUser]);
 
   const showToast = (m) => { setToast(m); setTimeout(() => setToast(null), 2200); };
-  const open = sessions.filter(s => s.status === "open");
+  const open = sessions.filter((s) => s.status !== "closed");
   const closed = sessions.filter(s => s.status === "closed");
   const active = sessions.find(s => s.id === activeId);
 
@@ -328,10 +356,20 @@ export function DemoApp({
 
   const stot = (s) => s.items.reduce((a, i) => a + i.price * i.qty, 0);
   const elapsed = (d) => { const m = Math.floor((Date.now()-d)/60000); return m<1?"az önce":`${m}dk`; };
+  const timerModeLabel = (mode) =>
+    mode === "count_up" ? "Sayac: Yukari" : mode === "count_down" ? "Sayac: Geri sayim" : "Sayac: Yok";
   const pickerCats = [{ k: "all", l: "Tümü" }, ...serviceCategories];
   const filtered = (cat === "all" ? serviceCatalog : serviceCatalog.filter((s) => s.cat === cat)).filter((s) => s.active !== false);
+  const timedServices = serviceCatalog
+    .filter((service) => service.active !== false && service.dur > 0)
+    .sort((a, b) => a.dur - b.dur);
+  const isMeteredSector = sectorId === "ps" || sectorId === "net";
+  const packageServices = isMeteredSector
+    ? serviceCatalog.filter((service) => service.active !== false && service.cat === "paket" && service.dur > 0)
+    : [];
   const maxW = Math.max(...WEEKLY.map(d => d.v));
-  const closedRevenue = closed.reduce((a, s) => a + stot(s), 0);
+  const report = buildDailySessionReport(sessions);
+  const closedRevenue = report.revenue;
   const openRevenue = open.reduce((a, s) => a + stot(s), 0);
   const allItemsClosed = closed.flatMap((s) => s.items);
   const salesAgg = {};
@@ -344,6 +382,9 @@ export function DemoApp({
     ? topFromSessions.map(([n, c]) => ({ n, c, p: Math.round((c / maxSale) * 100), session: true }))
     : serviceCatalog.filter((s) => s.active !== false).slice(0, 4).map((s, i) => ({ n: s.name, c: null, p: 82 - i * 14, session: false }));
   const hasPos = mode === "pos";
+  const canAddService = templateMeta.actions.includes("add_service");
+  const canCloseSession = templateMeta.actions.includes("close_session");
+  const canSendToPos = hasPos && templateMeta.actions.includes("send_to_pos");
   const qtyBtn = { width: 26, height: 26, borderRadius: 4, border: bd, background: C.accentSoft, color: C.dark, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 };
 
   useEffect(() => {
@@ -351,9 +392,66 @@ export function DemoApp({
     setCat("all");
   }, [pickerCats, cat]);
 
+  useEffect(() => {
+    if (readyResources.length === 0) return;
+    if (selectedPresetResource && readyResources.includes(selectedPresetResource)) return;
+    setSelectedPresetResource(readyResources[0]);
+  }, [readyResources, selectedPresetResource]);
+
+  useEffect(() => {
+    if (packageServices.length === 0) {
+      setSelectedPackageId("");
+      return;
+    }
+    if (selectedPackageId && packageServices.some((service) => String(service.id) === selectedPackageId)) return;
+    setSelectedPackageId(String(packageServices[0].id));
+  }, [packageServices, selectedPackageId]);
+
+  const openPresetSession = () => {
+    const resourceName = selectedPresetResource.trim();
+    if (!resourceName) return;
+    const alreadyOpen = open.find((session) => session.name === resourceName);
+    if (alreadyOpen) {
+      setActiveId(alreadyOpen.id);
+      if (isMobile) setSessionUi("detail");
+      showToast(`"${resourceName}" zaten acik`);
+      return;
+    }
+    const defaultSliceMinutes = Math.max(1, Number(profile.defaultSliceMinutes) || 60);
+    const selectedPackage = packageServices.find((service) => String(service.id) === selectedPackageId) ?? null;
+    const timerPlan = selectedPackage
+      ? {
+          mode: "fixed_duration",
+          sliceMinutes: null,
+          fixedMinutes: selectedPackage.dur,
+          warningShown: false,
+        }
+      : {
+          mode: "count_up_slice",
+          sliceMinutes: defaultSliceMinutes,
+          fixedMinutes: null,
+          warningShown: false,
+        };
+    const s = mkSess(resourceName, sessionSeed, { startImmediately: true, timerPlan });
+    const sessionToOpen = selectedPackage
+      ? {
+          ...s,
+          items: [{ ...selectedPackage, qty: 1 }],
+        }
+      : s;
+    setSessions((p) => [...p, sessionToOpen]);
+    setActiveId(sessionToOpen.id);
+    if (isMobile) setSessionUi("detail");
+    if (selectedPackage) {
+      showToast("Masa sabit sureli olarak ayarlandi, sure doldugunda bildirileceksiniz.");
+      return;
+    }
+    showToast(`"${resourceName}" acildi, sayac basladi`);
+  };
+
   const addSession = () => {
     const n = newName.trim() || `${sessionLabel} ${sessions.length + 1}`;
-    const s = mkSess(n);
+    const s = mkSess(n, sessionSeed);
     setSessions((p) => [...p, s]);
     setNewName("");
     setAddingName(false);
@@ -362,10 +460,25 @@ export function DemoApp({
     if (isMobile) setSessionUi("detail");
     showToast(`"${n}" açıldı`);
   };
-  const addItem = useCallback((svc) => { setSessions(p => p.map(s => { if(s.id!==activeId) return s; const ex=s.items.find(i=>i.id===svc.id); return {...s, items: ex ? s.items.map(i=>i.id===svc.id?{...i,qty:i.qty+1}:i) : [...s.items,{...svc,qty:1}]}; })); showToast(`+ ${svc.name}`); }, [activeId]);
+  const addItem = useCallback((svc) => { setSessions(p => p.map(s => { if(s.id!==activeId) return s; const ex=s.items.find(i=>i.id===svc.id); const nextStatus = s.status === "open" ? transitionStatus("open", "in_progress") : s.status; return {...s, status: nextStatus, items: ex ? s.items.map(i=>i.id===svc.id?{...i,qty:i.qty+1}:i) : [...s.items,{...svc,qty:1}]}; })); showToast(`+ ${svc.name}`); }, [activeId]);
   const changeQty = (itemId, delta) => { setSessions(p => p.map(s => { if(s.id!==activeId) return s; return {...s, items: s.items.map(i=>i.id===itemId?{...i,qty:i.qty+delta}:i).filter(i=>i.qty>0)}; })); };
   const closeSession = (sid) => {
-    setSessions((p) => p.map((s) => (s.id === sid ? { ...s, status: "closed", closedAt: new Date() } : s)));
+    setSessions((p) =>
+      p.map((s) => {
+        if (s.id !== sid) return s;
+        const prepared =
+          s.status === "open" ? transitionStatus("open", "in_progress") : s.status;
+        const pending =
+          prepared === "pending_payment" ? prepared : transitionStatus(prepared, "pending_payment");
+        const finalStatus = transitionStatus(pending, "closed");
+        return {
+          ...s,
+          status: finalStatus,
+          closedAt: new Date(),
+          closingReason: s.items.length > 0 ? "payment" : "manual",
+        };
+      })
+    );
     setConfirmId(null);
     showToast("Çek kapatıldı ✓");
     const rem = open.filter((s) => s.id !== sid);
@@ -374,13 +487,87 @@ export function DemoApp({
   };
   const sendToPos = async () => { if(!posTarget||!active||active.items.length===0) return; setShowPosModal(false); setSending(true); await new Promise(r=>setTimeout(r,1500)); setSending(false); setSentOk(true); showToast(`${posTarget.name} → gönderildi ✓`); setTimeout(()=>setSentOk(false),3000); };
 
+  useEffect(() => {
+    const timerId = window.setInterval(() => {
+      let alertSessionId = null;
+
+      setSessions((prev) =>
+        prev.map((session) => {
+          if (session.status !== "in_progress") return session;
+          if (session.timerMode === "no_timer") return session;
+
+          const elapsedMinutes = Math.floor((Date.now() - session.createdAt.getTime()) / 60000);
+          if (elapsedMinutes < 1) return session;
+
+          if (session.timerPlan.mode === "count_up_slice") {
+            if (!isMeteredSector) return session;
+            if (!canAddService || timedServices.length === 0) return session;
+            const sliceMinutes = Math.max(1, session.timerPlan.sliceMinutes || 60);
+            const passedSlices = Math.floor(elapsedMinutes / sliceMinutes);
+            const appliedSlices = session.autoTimerServiceIds.length;
+            if (passedSlices <= appliedSlices) return session;
+
+            const toApply = passedSlices - appliedSlices;
+            const matchedService =
+              timedServices.find((service) => service.dur === sliceMinutes) ||
+              timedServices.reduce((best, service) => {
+                if (!best) return service;
+                const bestGap = Math.abs(best.dur - sliceMinutes);
+                const gap = Math.abs(service.dur - sliceMinutes);
+                return gap < bestGap ? service : best;
+              }, null);
+            if (!matchedService) return session;
+
+            const existing = session.items.find((item) => item.id === matchedService.id);
+            return {
+              ...session,
+              autoTimerServiceIds: [
+                ...session.autoTimerServiceIds,
+                ...Array.from({ length: toApply }, () => matchedService.id),
+              ],
+              items: existing
+                ? session.items.map((item) =>
+                    item.id === matchedService.id ? { ...item, qty: item.qty + toApply } : item
+                  )
+                : [...session.items, { ...matchedService, qty: toApply }],
+            };
+          }
+
+          if (session.timerPlan.warningShown) return session;
+
+          if (session.timerPlan.mode === "fixed_duration") {
+            const target = session.timerPlan.fixedMinutes || 0;
+            if (target > 0 && elapsedMinutes >= target) {
+              if (!alertSessionId) alertSessionId = session.id;
+              return {
+                ...session,
+                timerPlan: { ...session.timerPlan, warningShown: true },
+              };
+            }
+            return session;
+          }
+
+          return session;
+        })
+      );
+
+      if (alertSessionId) {
+        setExpiryAlertId((prev) => prev ?? alertSessionId);
+      }
+    }, 10000);
+
+    return () => {
+      window.clearInterval(timerId);
+    };
+  }, [canAddService, timedServices, isMeteredSector]);
+
   const handleHeaderBack = () => {
     if (view === "profile") { setView("sessions"); return; }
     if (isMobile && view === "sessions" && sessionUi === "detail") { setSessionUi("list"); return; }
     onBack();
   };
 
-  const showCatalog = Boolean(active && !isMobile);
+  const showCatalog = Boolean(active && !isMobile && canAddService);
   const showCartPanel = Boolean(active && !isMobile);
 
   return (
@@ -402,13 +589,26 @@ export function DemoApp({
       {confirmId && (()=>{ const s=sessions.find(x=>x.id===confirmId); if(!s) return null; return (
         <div style={{position:"fixed",inset:0,background:"rgba(250,250,248,.92)",zIndex:8000,display:"flex",alignItems:isMobile?"flex-end":"center",justifyContent:"center",padding:"max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left))",animation:"fadeIn .15s ease",overflowY:"auto"}}>
           <div style={{background:C.card,border:`2px solid ${C.dark}`,borderRadius:isMobile?"12px 12px 0 0":12,padding:"clamp(18px, 4vw, 28px)",width:"100%",maxWidth:400,maxHeight:"min(90dvh, 560px)",overflowY:"auto",WebkitOverflowScrolling:"touch",animation:"fadeUp .18s ease",margin:isMobile?0:"auto"}}>
-            <div style={{fontSize:10,color:C.light,letterSpacing:1.5,fontFamily:mono,marginBottom:8}}>ÇEK KAPAT</div>
+            <div style={{fontSize:10,color:C.light,letterSpacing:1.5,fontFamily:mono,marginBottom:8}}>{closeSessionLabel.toUpperCase()}</div>
             <div style={{fontSize:22,fontWeight:700,color:C.dark,marginBottom:4}}>{s.name}</div>
             <div style={{fontSize:32,fontWeight:700,fontFamily:mono,color:C.dark,marginBottom:6}}>{fmt(stot(s))} ₺</div>
             <div style={{fontSize:12,color:C.mid,marginBottom:24}}>{s.items.length} kalem · {s.items.reduce((a,i)=>a+i.qty,0)} adet</div>
             <div style={{display:"flex",flexDirection:isMobile?"column-reverse":"row",gap:8}}>
               <button type="button" onClick={()=>setConfirmId(null)} style={{flex:1,padding:12,fontSize:13,fontWeight:600,borderRadius:6,border:bd,background:"transparent",color:C.dark,cursor:"pointer",width:isMobile?"100%":undefined}}>İptal</button>
-              <button type="button" onClick={()=>closeSession(confirmId)} style={{flex:1,padding:12,fontSize:13,fontWeight:700,borderRadius:6,border:"none",background:C.dark,color:"#fff",cursor:"pointer",width:isMobile?"100%":undefined}}>Tahsil Et & Kapat</button>
+              <button type="button" onClick={()=>closeSession(confirmId)} style={{flex:1,padding:12,fontSize:13,fontWeight:700,borderRadius:6,border:"none",background:C.dark,color:"#fff",cursor:"pointer",width:isMobile?"100%":undefined}}>{closeSessionLabel}</button>
+            </div>
+          </div>
+        </div>); })()}
+
+      {expiryAlertId && (()=>{ const s=sessions.find(x=>x.id===expiryAlertId); if(!s) return null; return (
+        <div style={{position:"fixed",inset:0,background:"rgba(250,250,248,.92)",zIndex:8100,display:"flex",alignItems:isMobile?"flex-end":"center",justifyContent:"center",padding:"max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left))",animation:"fadeIn .15s ease",overflowY:"auto"}}>
+          <div style={{background:C.card,border:`2px solid ${C.dark}`,borderRadius:isMobile?"12px 12px 0 0":12,padding:"clamp(18px, 4vw, 28px)",width:"100%",maxWidth:420,maxHeight:"min(90dvh, 560px)",overflowY:"auto",WebkitOverflowScrolling:"touch",animation:"fadeUp .18s ease",margin:isMobile?0:"auto"}}>
+            <div style={{fontSize:10,color:C.light,letterSpacing:1.5,fontFamily:mono,marginBottom:8}}>SURE / HIZMET BITTI</div>
+            <div style={{fontSize:22,fontWeight:700,color:C.dark,marginBottom:4}}>{s.name}</div>
+            <div style={{fontSize:13,color:C.mid,marginBottom:16}}>Bu masa icin tanimli sure/hizmet tamamlaniyor. Kapatmak ister misin?</div>
+            <div style={{display:"flex",flexDirection:isMobile?"column-reverse":"row",gap:8}}>
+              <button type="button" onClick={()=>setExpiryAlertId(null)} style={{flex:1,padding:12,fontSize:13,fontWeight:600,borderRadius:6,border:bd,background:"transparent",color:C.dark,cursor:"pointer",width:isMobile?"100%":undefined}}>Devam Et</button>
+              <button type="button" onClick={()=>{setExpiryAlertId(null); setConfirmId(s.id);}} style={{flex:1,padding:12,fontSize:13,fontWeight:700,borderRadius:6,border:"none",background:C.dark,color:"#fff",cursor:"pointer",width:isMobile?"100%":undefined}}>Masa Kapat</button>
             </div>
           </div>
         </div>); })()}
@@ -473,12 +673,15 @@ export function DemoApp({
       {view==="analytics" && (
         <div style={{ flex: 1, padding: isMobile ? 16 : 24, overflowY: "auto", display: "flex", flexDirection: "column", gap: 14 }}>
           <div style={{ fontSize: 12, color: C.mid, marginBottom: -6 }}>{SECTORS.find((s) => s.id === sectorId)?.name || "Şablon"} · özet (demo veri + kapalı oturumlar)</div>
+          <div style={{ fontSize: 11, color: C.light }}>
+            Bekleyen odeme: {report.pendingPaymentSessions} · Sifir sure kapanis: {report.zeroDurationClosures} · Manuel kapanis: {report.manualClosures}
+          </div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(160px, 1fr))",gap:10}}>
             {[
               { l: "Kapalı ciro", v: `${fmt(closedRevenue)} ₺`, d: `${closed.length} kapalı` },
               { l: "Açık tahmini", v: `${fmt(openRevenue)} ₺`, d: `${open.length} açık oturum` },
-              { l: "Toplam işlem", v: String(closed.length + open.length), d: "oturum kaydı" },
-              { l: "Ort. sepet (kapalı)", v: closed.length ? `${fmt(Math.round(closedRevenue / closed.length))} ₺` : "—", d: "kapananlar" },
+              { l: "Toplam işlem", v: String(report.totalSessions), d: "oturum kaydı" },
+              { l: "Ort. süre (kapalı)", v: report.closedSessions ? `${report.averageSessionDurationMinutes} dk` : "—", d: "kapananlar" },
             ].map((k, i) => (
               <div key={i} style={{border:bd,borderRadius:8,padding:16,background:C.card}}>
                 <div style={{fontSize:10,color:C.light,letterSpacing:1,fontFamily:mono,marginBottom:8}}>{k.l.toUpperCase()}</div>
@@ -542,6 +745,54 @@ export function DemoApp({
               <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
                 <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "0 0 8px" }}>
                   <div style={{ padding: "14px 16px 8px" }}>
+                    {readyResources.length > 0 && (
+                      <div style={{ border: bd, borderRadius: 8, padding: 10, marginBottom: 10, background: C.card }}>
+                        <div style={{ fontSize: 10, color: C.light, letterSpacing: 1, fontFamily: mono, marginBottom: 7 }}>
+                          HAZIR {resourceTitle} SEC
+                        </div>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <select
+                            value={selectedPresetResource}
+                            onChange={(e) => setSelectedPresetResource(e.target.value)}
+                            style={{ flex: 1, minWidth: 0, padding: "9px 10px", borderRadius: 6, border: bd, background: C.bg, fontFamily: sans, fontSize: 12 }}
+                          >
+                            {readyResources.map((resource) => (
+                              <option key={resource} value={resource}>
+                                {resource}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={openPresetSession}
+                            style={{ padding: "9px 12px", borderRadius: 6, border: "none", background: C.dark, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                          >
+                            Ac
+                          </button>
+                        </div>
+                        {isMeteredSector && (
+                          <div style={{ display: "grid", gap: 6, marginTop: 8 }}>
+                            <div style={{ fontSize: 11, color: C.mid }}>
+                              Varsayilan dilim: {profile.defaultSliceMinutes} dk (Profil'den degistirilebilir)
+                            </div>
+                            {packageServices.length > 0 && (
+                              <select
+                                value={selectedPackageId}
+                                onChange={(e) => setSelectedPackageId(e.target.value)}
+                                style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: bd, background: C.bg, fontFamily: sans, fontSize: 12 }}
+                              >
+                                <option value="">Saatlik akis (otomatik dilim)</option>
+                                {packageServices.map((service) => (
+                                  <option key={service.id} value={String(service.id)}>
+                                    Sabit paket: {service.name} ({service.dur} dk)
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                     <div style={{ fontSize: 10, color: C.light, letterSpacing: 1, marginBottom: 10, fontFamily: mono }}>AÇIK — {open.length}</div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       {open.length === 0 && !addingName && (
@@ -573,7 +824,7 @@ export function DemoApp({
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: 14, fontWeight: 700, color: C.dark }}>{s.name}</div>
                             <div style={{ fontSize: 11, color: C.light, fontFamily: mono, marginTop: 2 }}>
-                              {elapsed(s.createdAt)} · {s.items.reduce((a, i) => a + i.qty, 0)} hizmet
+                              {elapsed(s.createdAt)} · {s.items.reduce((a, i) => a + i.qty, 0)} hizmet · {timerModeLabel(s.timerMode)}
                             </div>
                           </div>
                           <div style={{ textAlign: "right", flexShrink: 0 }}>
@@ -650,10 +901,14 @@ export function DemoApp({
                 sending={sending}
                 sentOk={sentOk}
                 setConfirmId={setConfirmId}
-                hasPos={hasPos}
+                canSendToPos={canSendToPos}
+                canCloseSession={canCloseSession}
+                canAddService={canAddService}
                 pickerCats={pickerCats}
                 qtyBtn={qtyBtn}
                 sessionTotal={stot}
+                addServiceLabel={addServiceLabel}
+                closeSessionLabel={closeSessionLabel}
               />
             )}
           </div>
@@ -664,6 +919,50 @@ export function DemoApp({
                   <span style={{ fontSize: 10, color: C.light, letterSpacing: 1.5, fontFamily: mono }}>AÇIK — {open.length}</span>
                   <button type="button" onClick={() => setAddingName((v) => !v)} style={{ fontSize: 18, background: "none", border: "none", color: C.light, cursor: "pointer" }}>+</button>
                 </div>
+                {readyResources.length > 0 && (
+                  <div style={{ padding: "10px 14px", borderBottom: bd, background: C.accentSoft }}>
+                    <div style={{ fontSize: 10, color: C.light, letterSpacing: 1, marginBottom: 7, fontFamily: mono }}>
+                      HAZIR {resourceTitle} SEC
+                    </div>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <select
+                        value={selectedPresetResource}
+                        onChange={(e) => setSelectedPresetResource(e.target.value)}
+                        style={{ flex: 1, minWidth: 0, padding: "8px 10px", fontSize: 12, border: bd, borderRadius: 5, outline: "none", fontFamily: sans, background: C.card }}
+                      >
+                        {readyResources.map((resource) => (
+                          <option key={resource} value={resource}>
+                            {resource}
+                          </option>
+                        ))}
+                      </select>
+                      <button type="button" onClick={openPresetSession} style={{ padding: "8px 10px", fontSize: 12, fontWeight: 700, borderRadius: 5, border: "none", background: C.dark, color: "#fff", cursor: "pointer" }}>
+                        Ac
+                      </button>
+                    </div>
+                    {isMeteredSector && (
+                      <div style={{ display: "grid", gap: 6, marginTop: 8 }}>
+                        <div style={{ fontSize: 11, color: C.mid }}>
+                          Varsayilan dilim: {profile.defaultSliceMinutes} dk (Profil'den degistirilebilir)
+                        </div>
+                        {packageServices.length > 0 && (
+                          <select
+                            value={selectedPackageId}
+                            onChange={(e) => setSelectedPackageId(e.target.value)}
+                            style={{ width: "100%", padding: "8px 10px", fontSize: 12, border: bd, borderRadius: 5, outline: "none", fontFamily: sans, background: C.card }}
+                          >
+                            <option value="">Saatlik akis (otomatik dilim)</option>
+                            {packageServices.map((service) => (
+                              <option key={service.id} value={String(service.id)}>
+                                Sabit paket: {service.name} ({service.dur} dk)
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
                 {addingName && (
                   <div style={{ padding: "10px 14px", borderBottom: bd, background: C.accentSoft, animation: "fadeUp .15s ease" }}>
                     <input autoFocus value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addSession(); if (e.key === "Escape") setAddingName(false); }} placeholder={`${sessionLabel} adı...`} style={{ width: "100%", padding: "8px 10px", fontSize: 13, border: bd, borderRadius: 5, outline: "none", fontFamily: sans, marginBottom: 8, background: C.card }} />
@@ -682,7 +981,7 @@ export function DemoApp({
                         <span style={{ fontSize: 13, fontWeight: 700, fontFamily: mono, color: C.dark }}>{fmt(stot(s))} ₺</span>
                       </div>
                       <div style={{ fontSize: 11, color: C.light, marginTop: 3, fontFamily: mono }}>
-                        {elapsed(s.createdAt)} · {s.items.reduce((a, i) => a + i.qty, 0)} hizmet
+                        {elapsed(s.createdAt)} · {s.items.reduce((a, i) => a + i.qty, 0)} hizmet · {timerModeLabel(s.timerMode)}
                       </div>
                     </button>
                   ))}
@@ -744,7 +1043,7 @@ export function DemoApp({
                   <div>
                     <div style={{ fontSize: 16, fontWeight: 700, color: C.dark }}>{active.name}</div>
                     <div style={{ fontSize: 11, color: C.light, fontFamily: mono }}>
-                      {elapsed(active.createdAt)} · {active.items.length} kalem
+                      {elapsed(active.createdAt)} · {active.items.length} kalem · {timerModeLabel(active.timerMode)}
                     </div>
                   </div>
                 </div>
@@ -774,11 +1073,11 @@ export function DemoApp({
                   )}
                 </div>
                 <div style={{ borderTop: bd, padding: "14px 20px", flexShrink: 0 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: hasPos ? 12 : 0 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: canSendToPos ? 12 : 0 }}>
                     <span style={{ fontSize: 11, color: C.light, letterSpacing: 1, fontFamily: mono }}>TOPLAM</span>
                     <span style={{ fontSize: 26, fontWeight: 700, fontFamily: mono, color: C.dark }}>{fmt(stot(active))} ₺</span>
                   </div>
-                  {hasPos ? (
+                  {canSendToPos ? (
                     <>
                       <button type="button" onClick={() => setShowPosModal(true)} style={{ width: "100%", marginBottom: 8, padding: "10px 14px", borderRadius: 5, border: `1px solid ${posTarget ? C.dark : C.border}`, background: posTarget ? C.accentSoft : "transparent", textAlign: "left", display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
                         <div style={{ width: 7, height: 7, borderRadius: "50%", background: posTarget ? C.green : C.light }} />
@@ -790,16 +1089,18 @@ export function DemoApp({
                         <button type="button" onClick={() => { if (!posTarget) { setShowPosModal(true); return; } if (active?.items.length > 0 && !sending) setShowPosModal(true); }} disabled={active?.items.length === 0 || sending} style={{ flex: 1, minWidth: 120, padding: 12, fontSize: 12, fontWeight: 700, letterSpacing: 0.5, border: "none", borderRadius: 5, transition: "all .2s", background: sentOk ? C.green : active?.items.length === 0 ? C.accentSoft : C.dark, color: active?.items.length === 0 ? C.light : "#fff", cursor: active?.items.length === 0 || sending ? "not-allowed" : "pointer" }}>
                           {sending ? "GÖNDERİLİYOR..." : sentOk ? "GÖNDERİLDİ ✓" : "POS'A GÖNDER"}
                         </button>
-                        <button type="button" onClick={() => active.items.length > 0 && setConfirmId(active.id)} disabled={active.items.length === 0 || sending} style={{ padding: "12px 14px", fontSize: 12, fontWeight: 700, letterSpacing: 0.4, border: bd, borderRadius: 5, background: "transparent", color: active.items.length === 0 ? C.light : C.dark, cursor: active.items.length === 0 || sending ? "not-allowed" : "pointer" }}>
-                          ÇEK KAPAT
-                        </button>
+                        {canCloseSession && (
+                          <button type="button" onClick={() => setConfirmId(active.id)} disabled={sending} style={{ padding: "12px 14px", fontSize: 12, fontWeight: 700, letterSpacing: 0.4, border: bd, borderRadius: 5, background: "transparent", color: sending ? C.light : C.dark, cursor: sending ? "not-allowed" : "pointer" }}>
+                            {closeSessionLabel}
+                          </button>
+                        )}
                       </div>
                     </>
-                  ) : (
-                    <button type="button" onClick={() => active.items.length > 0 && setConfirmId(active.id)} disabled={active.items.length === 0} style={{ width: "100%", padding: 12, fontSize: 12, fontWeight: 700, letterSpacing: 0.5, border: "none", borderRadius: 5, transition: "all .2s", background: active.items.length === 0 ? C.accentSoft : C.dark, color: active.items.length === 0 ? C.light : "#fff", cursor: active.items.length === 0 ? "not-allowed" : "pointer" }}>
-                      ÇEK KAPAT
+                  ) : canCloseSession ? (
+                    <button type="button" onClick={() => setConfirmId(active.id)} style={{ width: "100%", padding: 12, fontSize: 12, fontWeight: 700, letterSpacing: 0.5, border: "none", borderRadius: 5, transition: "all .2s", background: C.dark, color: "#fff", cursor: "pointer" }}>
+                      {closeSessionLabel}
                     </button>
-                  )}
+                  ) : null}
                 </div>
               </div>
             )}
@@ -817,8 +1118,8 @@ export function DemoApp({
 }
 
 export function DemoProfileScreen({ profile, onChange, onSave, onBack }: {
-  profile: { email: string; phone: string; sector: string; password: string };
-  onChange: (p: { email: string; phone: string; sector: string; password: string }) => void;
+  profile: { email: string; phone: string; sector: string; password: string; defaultSliceMinutes: number };
+  onChange: (p: { email: string; phone: string; sector: string; password: string; defaultSliceMinutes: number }) => void;
   onSave: () => void;
   onBack: () => void;
 }) {
@@ -851,6 +1152,20 @@ export function DemoProfileScreen({ profile, onChange, onSave, onBack }: {
             <option key={s.id} value={s.id}>{s.name}</option>
           ))}
         </select>
+      ))}
+      {(profile.sector === "ps" || profile.sector === "net") && field("Saatlik dilim (dk)", (
+        <input
+          value={String(profile.defaultSliceMinutes)}
+          onChange={(e) =>
+            onChange({
+              ...profile,
+              defaultSliceMinutes: Math.max(1, Number.parseInt(e.target.value || "0", 10) || 60),
+            })
+          }
+          placeholder="60"
+          inputMode="numeric"
+          style={{ width: "100%", padding: "11px 12px", borderRadius: 8, border: bd, fontSize: 14, outline: "none", background: C.card, fontFamily: sans }}
+        />
       ))}
       <button type="button" onClick={onSave} className="cta" style={{ width: "100%", marginTop: 8, padding: 13, border: "none", borderRadius: 8, background: C.dark, color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>
         Kaydet

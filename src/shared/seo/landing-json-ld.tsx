@@ -62,7 +62,7 @@ export function LandingJsonLd() {
       '@id': `${url}#howto`,
       name: 'Defter ile nasıl başlanır?',
       description:
-        'Şablon seçimi, kategori ve hizmet kurulumu, POS tanımları, adisyon, tahsilat ve raporlarla işletmenizi ayağa kaldırma adımları.',
+        'Şablon seçimi (kağıt fiş kullanan işletme modeli), kategori ve hizmet kurulumu, POS tanımları, adisyon, tahsilat ve rapor adımları.',
       step: ONBOARD_STEPS.map((s, i) => ({
         '@type': 'HowToStep',
         position: i + 1,

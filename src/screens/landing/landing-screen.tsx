@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { C, bd, mono, ONBOARD_STEPS, sans, SECTORS } from '@/shared/constants/demo.constants';
 import { useLandingSeo } from '@/shared/hooks/use-landing-seo.hook';
 import { FAQ_LANDING_ITEMS } from '@/shared/seo/faq-landing.data';
 import { LandingHeroMedia } from '@/screens/landing/landing-hero-media';
+import { LandingMvpSectors } from '@/screens/landing/landing-mvp-sectors';
+import { LandingProductStory } from '@/screens/landing/landing-product-story';
 import { appendContactLead } from '@/shared/storage/contact-leads.storage';
 import { LandingJsonLd } from '@/shared/seo/landing-json-ld';
 
@@ -64,12 +66,25 @@ export default function LandingScreen() {
         borderBottom: scrollY > 40 ? bd : "1px solid transparent",
         transition: "all .3s", padding: "0 clamp(16px,4vw,48px)",
       }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-            <span style={{ fontSize: 22, fontWeight: 700, letterSpacing: -1, color: C.dark }}>defter</span>
-            <span style={{ fontSize: 10, color: C.light, fontFamily: mono, letterSpacing: 1 }}>v1.0</span>
+        <div style={{ maxWidth: 1200, margin: "0 auto", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "clamp(12px,3vw,28px)", flexWrap: "wrap", minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+              <span style={{ fontSize: 22, fontWeight: 700, letterSpacing: -1, color: C.dark }}>defter</span>
+              <span style={{ fontSize: 10, color: C.light, fontFamily: mono, letterSpacing: 1 }}>v1.0</span>
+            </div>
+            <nav aria-label="Bölümler" style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
+              <a href="#urun-akisi" style={{ fontSize: 12, fontWeight: 500, color: C.mid, textDecoration: "none", whiteSpace: "nowrap" }}>
+                Ürün akışı
+              </a>
+              <a href="#sektorler" style={{ fontSize: 12, fontWeight: 500, color: C.mid, textDecoration: "none", whiteSpace: "nowrap" }}>
+                Sektörler
+              </a>
+              <a href="#ozellikler" style={{ fontSize: 12, fontWeight: 500, color: C.mid, textDecoration: "none", whiteSpace: "nowrap" }}>
+                Özellikler
+              </a>
+            </nav>
           </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
             {/* Gecici: landing login/giris aksiyonlari kapatildi.
             {landingUser ? (
               <span style={{ padding: "8px 18px", fontSize: 12, fontWeight: 500, color: C.mid, fontFamily: mono, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={landingUser.email}>{landingUser.email}</span>
@@ -99,7 +114,7 @@ export default function LandingScreen() {
         <div style={{ display: "flex", flexDirection: "column", gap: "clamp(28px,5vw,52px)" }}>
           <div className="fu" style={{ maxWidth: 720 }}>
             <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 2, color: C.light, fontFamily: mono, marginBottom: 16 }}>
-              İŞLETME OTOMASYONU
+              KAĞIT ADİSYONUN DİJİTALİ
             </div>
             <h1
               style={{
@@ -111,16 +126,16 @@ export default function LandingScreen() {
                 marginBottom: 18,
               }}
             >
-              Her işletmenin
+              Fişe ne yazıyorsanız,
               <br />
-              defteri dijital olsun.
+              ekranda da görünür.
             </h1>
             <p style={{ fontSize: "clamp(16px, 1.85vw, 19px)", lineHeight: 1.55, color: C.dark, marginBottom: 14 }}>
-              <strong>Defter</strong> bir işletme otomasyon aracıdır. Hizmet ve siparişten süre takibine, tahsilata kadar
-              operasyonunuzu tek panelden yürütün.
+              <strong>Defter</strong> randevu değil, CRM değil: açık işlem açın, içine ürün ve hizmet yazın, süreçte tutun, tahsilatla kapatın. Kağıt
+              adisyon, kabin fişi veya iş takip kartının aynısı — dijital.
             </p>
             <p className="fu1" style={{ fontSize: "clamp(15px,1.75vw,18px)", lineHeight: 1.65, color: C.mid, maxWidth: 560 }}>
-              Hamam, kafe, spor salonu, PlayStation cafe — sektör fark etmez; iş modelinize uygun şablonla hemen başlayın.
+              Kafe, PlayStation / internet cafe, hamam veya bilardo — Faz 1 şablonlarıyla demoyu deneyin. Yol haritasındaki diğer sektörler şablon sırasıyla eklenir.
             </p>
           </div>
 
@@ -162,7 +177,7 @@ export default function LandingScreen() {
           </div>
 
           <div className="fu3" style={{ display: "flex", gap: "clamp(24px,4vw,48px)", flexWrap: "wrap" }}>
-            {[{ v: "8+", l: "Sektör" }, { v: "∞", l: "İşlem" }, { v: "1×", l: "Yıllık ödeme" }].map((s, i) => (
+            {[{ v: "5", l: "Faz 1 şablon" }, { v: "∞", l: "İşlem" }, { v: "1×", l: "Yıllık ödeme" }].map((s, i) => (
               <div key={i}>
                 <div style={{ fontSize: 30, fontWeight: 700, fontFamily: mono, color: C.dark, letterSpacing: -1 }}>{s.v}</div>
                 <div style={{ fontSize: 11, color: C.light, marginTop: 4 }}>{s.l}</div>
@@ -170,6 +185,31 @@ export default function LandingScreen() {
             ))}
           </div>
         </div>
+      </section>
+
+      {/* 1b — ÜRÜN AKIŞI */}
+      <section
+        id="urun-akisi"
+        style={{
+          padding: "clamp(40px,7vw,80px) clamp(16px,4vw,48px)",
+          maxWidth: 1200,
+          margin: "0 auto",
+          borderTop: `1px solid ${C.border}`,
+        }}
+      >
+        <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 2, color: C.light, fontFamily: mono, marginBottom: 12 }}>
+          ÜRÜNÜN ÖZÜ
+        </div>
+        <h2 style={{ fontSize: "clamp(24px,4vw,40px)", fontWeight: 700, letterSpacing: -1, color: C.dark, marginBottom: 14, lineHeight: 1.1 }}>
+          Kağıt kullanan işletmeye
+          <br />
+          uygun.
+        </h2>
+        <p style={{ fontSize: 15, color: C.mid, marginBottom: 28, maxWidth: 560, lineHeight: 1.55 }}>
+          Oturum motoru tek; şablon ise hangi terimlerle konuşacağınızı ve hangi kaynakları (masa, kabin, PC) listeden seçeceğinizi belirler. Yeni
+          sektör için soru: bugün kağıda yazıyor mu, açık hesabı takip ediyor mu?
+        </p>
+        <LandingProductStory />
       </section>
 
       {/* 2 — TANITIM VİDEOSU */}
@@ -235,37 +275,11 @@ export default function LandingScreen() {
           KİMLER İÇİN
         </div>
         <h2 style={{ fontSize: "clamp(24px,4vw,40px)", fontWeight: 700, letterSpacing: -1, color: C.dark, marginBottom: 12, lineHeight: 1.1 }}>
-          Sektörünüze uygun şablon,
+          Ne iş yapıyorsunuz?
           <br />
-          hazır terminoloji.
+          Sadece size uygun akışı gösterelim.
         </h2>
-        <p style={{ fontSize: 15, color: C.mid, marginBottom: 36, maxWidth: 520, lineHeight: 1.55 }}>
-          Hangi iş modelinde olursanız olun; kategori, etiket ve akış şablona göre gelir.
-        </p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 12 }}>
-          {SECTORS.map((s) => (
-            <div key={s.id} className="sc" style={{ padding: 20, borderRadius: 10, border: bd, background: C.card, cursor: "default", transition: "all .25s" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-                <div style={{ width: 40, height: 40, borderRadius: 8, background: C.accentSoft, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>{s.icon}</div>
-                <div>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: C.dark }}>{s.name}</div>
-                  <div style={{ fontSize: 11, color: C.light }}>{s.desc}</div>
-                </div>
-              </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                {[
-                  ["KAYIT", s.session],
-                  ["BİRİM", s.unit],
-                ].map(([l, v]) => (
-                  <div key={l} style={{ flex: 1, padding: "8px 10px", borderRadius: 6, background: C.accentSoft }}>
-                    <div style={{ fontSize: 9, color: C.light, fontFamily: mono, letterSpacing: 0.5, marginBottom: 2 }}>{l}</div>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: C.dark }}>{v}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+        <LandingMvpSectors sectors={SECTORS} />
       </section>
 
       {/* 5 — ÖZELLİKLER */}
@@ -285,22 +299,19 @@ export default function LandingScreen() {
           Her şey tek panelde.
         </h2>
         <p style={{ fontSize: 15, color: C.mid, marginBottom: 32, maxWidth: 560, lineHeight: 1.55 }}>
-          Operasyondan rapora, şablondan POS’a — ihtiyacınız olan modüller tek sözleşmede toplanır.
+          Şu an demoda gördükleriniz çekirdek ve şablon katmanı; POS ve derin entegrasyonlar planda ayrı paket olarak ilerler.
         </p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
           {[
-            { i: "▤", t: "Operasyon yönetimi", d: "Müşteri, masa veya kabine göre kayıt açın; sepete hizmet ekleyin, süre takibi yapın." },
-            { i: "◫", t: "Hizmet & Kategori", d: "Sınırsız hizmet, özel kategoriler, KDV hesaplaması, aktif/pasif kontrolü." },
-            { i: "◎", t: "Durum Akışı", d: "OPEN → IN_PROGRESS → PENDING_PAYMENT → CLOSED adımlarıyla net süreç." },
-            { i: "◧", t: "İndirim & Kampanya", d: "Sepet bazlı indirimler ve kampanya kurallarıyla kontrollü fiyatlandırma." },
-            { i: "✎", t: "Notlar & Etiketler", d: "İşlem ve siparişlere operasyon notları ve etiketler ekleyin." },
-            { i: "◩", t: "Analitik & Rapor", d: "Ciro, doluluk, en çok satan hizmetler — haftalık ve günlük grafikler." },
-            { i: "⌂", t: "Kaynak Yönetimi", d: "Masa/konsol/kabine/oda durumları: boş, dolu, bakımda, rezerve." },
-            { i: "⬡", t: "POS Entegrasyonu", d: "Birden fazla POS cihazı tanımlayın, tek tıkla ödeme gönderin." },
-            { i: "⚑", t: "Kullanıcı Yönetimi", d: "Personel rolleri ve erişim seviyeleri için yönetim tabanlı yapı." },
-            { i: "◱", t: "Template Engine", d: "Sektör şablonlarıyla kurulum sihirbazı: seç, yükle, özelleştir." },
-            { i: "☁", t: "Offline-first Hazırlık", d: "Bağlantı kesilse de operasyonu sürdürecek senaryolara uygun kurgu." },
-            { i: "◳", t: "Responsive", d: "Masaüstü, tablet, telefon — her cihazda sorunsuz çalışır." },
+            { i: "▤", t: "Şablon + sektör dili", d: "İşletme tipine göre etiketler, kategoriler ve örnek hizmetler; tek çekirdekte tutarlı deneyim." },
+            { i: "⌂", t: "Hazır kaynak listesi", d: "Anahtar, masa, PC veya masa — önceden tanımlı listeden seçerek açın; gerekirse sonra yenisini ekleyin." },
+            { i: "◫", t: "Oturum + sepet", d: "Açık oturumda hizmet kalemleri, miktar ve toplam; kapanışta tahsilat akışı." },
+            { i: "◎", t: "Durum akışı", d: "OPEN → IN_PROGRESS → PENDING_PAYMENT → CLOSED ile net süreç; demo içinde canlı." },
+            { i: "⏱", t: "Sayaç + dilim (PS / Net)", d: "Profilde dilim süresi; yukarı sayaçta otomatik hizmet eşleşmesi veya sabit paket süresi dolunca uyarı." },
+            { i: "◩", t: "Analitik özeti", d: "Kapalı ciro, açık tahmini ve en çok satan kalemler — demo verilerle örnek." },
+            { i: "⬡", t: "POS (plan)", d: "Temel + POS demosunda cihaz seçimi ve gönderim akışı; canlıda entegrasyon yol haritası." },
+            { i: "◱", t: "Template motoru", d: "Kod içi şablon sözleşmesi; ileride JSONB ile genişletilebilir yapı." },
+            { i: "◳", t: "Responsive", d: "Masaüstü ve mobil; demo akışı tek ekranda." },
           ].map((f, i) => (
             <div key={i} style={{ padding: 22, borderRadius: 10, border: bd, background: C.card }}>
               <div style={{ fontSize: 22, marginBottom: 10, color: C.dark }}>{f.i}</div>
@@ -386,6 +397,9 @@ export default function LandingScreen() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
           <div><span style={{ fontSize: 18, fontWeight: 700, letterSpacing: -.5, color: C.dark }}>defter</span><span style={{ fontSize: 12, color: C.light, marginLeft: 12 }}>© 2026</span></div>
           <nav aria-label="Sayfa bölümleri" style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center", justifyContent: "flex-end" }}>
+            <a href="#urun-akisi" style={{ fontSize: 12, color: C.mid, textDecoration: "none" }}>
+              Ürün akışı
+            </a>
             <a href="#sektorler" style={{ fontSize: 12, color: C.mid, textDecoration: "none" }}>
               Sektörler
             </a>
@@ -415,112 +429,191 @@ export default function LandingScreen() {
   );
 }
 
-/* ── ONBOARDING CAROUSEL ── */
+/* ── ONBOARDING: spaghetti path + nodes (5s auto-advance) ── */
+const PATH_VB = { w: 900, h: 140 };
+
 function OnboardingCarousel() {
-  const [idx, setIdx] = useState(0);
+  const n = ONBOARD_STEPS.length;
+  const [activeIdx, setActiveIdx] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const reset = useCallback(() => {
+
+  const nodePts = useMemo(() => {
+    const { w, h } = PATH_VB;
+    const padX = 44;
+    const usable = w - padX * 2;
+    return ONBOARD_STEPS.map((_, i) => {
+      const t = n <= 1 ? 0.5 : i / (n - 1);
+      const x = padX + t * usable;
+      const y = h / 2 + 22 * Math.sin(t * Math.PI * 2.1 + 0.35) + (i % 3) * 2 - 2;
+      return { x, y };
+    });
+  }, [n]);
+
+  const pathD = useMemo(() => {
+    if (nodePts.length === 0) return '';
+    if (nodePts.length === 1) return `M ${nodePts[0].x} ${nodePts[0].y}`;
+    let d = `M ${nodePts[0].x} ${nodePts[0].y}`;
+    for (let i = 0; i < nodePts.length - 1; i++) {
+      const p0 = nodePts[i];
+      const p1 = nodePts[i + 1];
+      const mx = (p0.x + p1.x) / 2;
+      const my = (p0.y + p1.y) / 2 + (i % 2 === 0 ? 10 : -10);
+      d += ` Q ${mx} ${my} ${p1.x} ${p1.y}`;
+    }
+    return d;
+  }, [nodePts]);
+
+  const schedule = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
-    timerRef.current = setInterval(() => setIdx((p) => (p + 1) % ONBOARD_STEPS.length), 5000);
-  }, []);
+    timerRef.current = setInterval(() => {
+      setActiveIdx((i) => (i + 1) % n);
+    }, 5000);
+  }, [n]);
+
   useEffect(() => {
-    reset();
+    schedule();
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [reset]);
-  const go = (i: number) => {
-    setIdx(i);
-    reset();
+  }, [schedule]);
+
+  const goTo = (i: number) => {
+    setActiveIdx(i);
+    schedule();
   };
+
+  const step = ONBOARD_STEPS[activeIdx];
+
   return (
-    <div style={{ maxWidth: 640, margin: "0 auto" }}>
+    <div style={{ maxWidth: 1080, margin: '0 auto' }}>
       <div
         style={{
-          height: 4,
-          borderRadius: 2,
-          background: "rgba(0,0,0,.08)",
-          marginBottom: 18,
-          overflow: "hidden",
+          borderRadius: 14,
+          border: bd,
+          background: C.card,
+          padding: 'clamp(18px, 3.5vw, 30px)',
+          overflow: 'hidden',
         }}
       >
-        <div
-          style={{
-            height: "100%",
-            width: `${((idx + 1) / ONBOARD_STEPS.length) * 100}%`,
-            background: C.dark,
-            borderRadius: 2,
-            transition: "width .45s ease",
-          }}
-        />
-      </div>
-      <div>
-        {ONBOARD_STEPS.map((s, i) => (
-          <button
-            key={i}
-            type="button"
-            onClick={() => go(i)}
-            style={{
-              width: "100%",
-              padding: "14px 16px",
-              borderRadius: 8,
-              marginBottom: 6,
-              border: i === idx ? `1.5px solid ${C.dark}` : "1px solid transparent",
-              background: i === idx ? C.card : "transparent",
-              boxShadow: i === idx ? "0 2px 12px rgba(0,0,0,.04)" : "none",
-              textAlign: "left",
-              cursor: "pointer",
-              transition: "all .25s",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 6,
-                  background: i === idx ? C.dark : C.accentSoft,
-                  color: i === idx ? "#fff" : C.light,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 12,
-                  fontWeight: 700,
-                  fontFamily: mono,
-                  flexShrink: 0,
-                  transition: "all .25s",
-                }}
-              >
-                {i + 1}
-              </div>
-              <div>
-                <div
+        <svg
+          viewBox={`0 0 ${PATH_VB.w} ${PATH_VB.h}`}
+          role="img"
+          aria-label="Kurulum adımları yol haritası"
+          style={{ width: '100%', height: 'auto', display: 'block', maxHeight: 200 }}
+        >
+          <defs>
+            <linearGradient id="pathGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor={C.border} stopOpacity={0.45} />
+              <stop offset="100%" stopColor={C.light} stopOpacity={0.35} />
+            </linearGradient>
+          </defs>
+          <path
+            d={pathD}
+            fill="none"
+            stroke="url(#pathGrad)"
+            strokeWidth={1.25}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            vectorEffect="non-scaling-stroke"
+          />
+          <path
+            pathLength={1}
+            d={pathD}
+            fill="none"
+            stroke={C.dark}
+            strokeWidth={1.35}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeDasharray={1}
+            strokeDashoffset={1 - (activeIdx + 1) / n}
+            style={{ transition: 'stroke-dashoffset 0.55s ease' }}
+            vectorEffect="non-scaling-stroke"
+            opacity={0.92}
+          />
+          {nodePts.map((pt, i) => {
+            const on = i === activeIdx;
+            const done = i < activeIdx;
+            return (
+              <g key={i}>
+                {on && (
+                  <circle cx={pt.x} cy={pt.y} r={14} fill={C.dark} opacity={0.08} style={{ transition: 'all .35s ease' }} />
+                )}
+                <circle
+                  cx={pt.x}
+                  cy={pt.y}
+                  r={on ? 7 : done ? 5 : 4.5}
+                  fill={on ? C.dark : C.card}
+                  stroke={done || on ? C.dark : C.border}
+                  strokeWidth={on ? 2 : 1.25}
+                  style={{ transition: 'all .35s ease', cursor: 'pointer' }}
+                  onClick={() => goTo(i)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      goTo(i);
+                    }
+                  }}
+                  tabIndex={0}
+                  role="button"
+                  aria-label={`Adım ${i + 1}: ${ONBOARD_STEPS[i].title}`}
+                  aria-current={on ? 'step' : undefined}
+                />
+                <text
+                  x={pt.x}
+                  y={pt.y + 4}
+                  textAnchor="middle"
                   style={{
-                    fontSize: 14,
+                    fontFamily: mono,
+                    fontSize: on ? 10 : 9,
                     fontWeight: 700,
-                    color: i === idx ? C.dark : C.mid,
-                    transition: "color .2s",
+                    fill: on ? '#fff' : C.dark2,
+                    pointerEvents: 'none',
                   }}
                 >
-                  {s.title}
-                </div>
-                {i === idx && (
-                  <div
-                    style={{
-                      fontSize: 12,
-                      color: C.mid,
-                      marginTop: 3,
-                      lineHeight: 1.5,
-                      animation: "fadeIn .3s ease",
-                    }}
-                  >
-                    {s.desc}
-                  </div>
-                )}
-              </div>
+                  {i + 1}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+
+        <div
+          aria-live="polite"
+          style={{
+            marginTop: 18,
+            paddingTop: 18,
+            borderTop: `1px solid ${C.border}`,
+            animation: 'fadeIn .35s ease',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+            <div
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                background: step.color,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 18,
+                flexShrink: 0,
+              }}
+              aria-hidden
+            >
+              {step.icon}
             </div>
-          </button>
-        ))}
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 11, fontFamily: mono, color: C.light, marginBottom: 4 }}>
+                ADIM {activeIdx + 1} / {n}
+              </div>
+              <div style={{ fontSize: 17, fontWeight: 700, color: C.dark, marginBottom: 6, letterSpacing: -0.3 }}>
+                {step.title}
+              </div>
+              <p style={{ fontSize: 14, color: C.mid, lineHeight: 1.55, margin: 0 }}>{step.desc}</p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -617,7 +710,7 @@ function DemoPickerModal({ onClose }: { onClose: () => void }) {
         <button type="button" onClick={onClose} style={{ position: "absolute", top: 12, right: 12, background: "none", border: "none", fontSize: 22, color: C.light, cursor: "pointer", padding: 8, lineHeight: 1 }} aria-label="Kapat">×</button>
         <div style={{ fontSize: 10, color: C.light, letterSpacing: 1.5, fontFamily: mono, marginBottom: 8, paddingRight: 36 }}>DEMO SEÇ</div>
         <div style={{ fontSize: "clamp(18px, 4vw, 22px)", fontWeight: 700, color: C.dark, marginBottom: 4, lineHeight: 1.2 }}>Hangi planı denemek istersiniz?</div>
-        <div style={{ fontSize: 13, color: C.mid, marginBottom: 20, lineHeight: 1.45 }}>Demo verilerle dolu, istediğiniz gibi kurcalayın.</div>
+        <div style={{ fontSize: 13, color: C.mid, marginBottom: 20, lineHeight: 1.45 }}>Faz 1 şablonlarından biriyle başlayın — kağıt adisyon çizgisinde, demo verilerle dolu.</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <Link to="/demo/onboarding/temel" className="sc" style={{ ...linkBase, padding: "16px 18px", borderRadius: 10, border: bd, background: C.bg, textAlign: "left", cursor: "pointer", transition: "all .15s" }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: C.dark, marginBottom: 3 }}>Temel</div>

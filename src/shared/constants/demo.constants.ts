@@ -1,4 +1,5 @@
 import type { DemoServiceRow, PosDeviceRow, SectorRow, TemplatePreset } from '@/shared/types/demo.types';
+import { resolveTemplateBySector } from '@/templates/template.resolver';
 
 export const C = {
   bg: '#fafaf8',
@@ -21,70 +22,183 @@ export const mono = "'DM Mono', monospace";
 export const sans = "'DM Sans', sans-serif";
 export const bd = `1px solid ${C.border}`;
 
+/** Landing sektör ızgarası — roadmap: `docs/05-product-scope-and-roadmap.md` */
 export const SECTORS: SectorRow[] = [
+  // Faz 1 — launch (demoda şablon seçilebilir)
   {
-    id: 'hamam',
-    icon: '♨',
-    name: 'Hamam & SPA',
-    desc: 'Kabine, hizmet ve paket yönetimi',
-    session: 'Kabine / Müşteri',
-    unit: 'Hizmet (dk bazlı)',
-  },
-  {
-    id: 'gym',
-    icon: '◎',
-    name: 'Spor Salonu',
-    desc: 'Üyelik, giriş ve ekstra hizmetler',
-    session: 'Üye Girişi',
-    unit: 'Ders / Ekstra',
+    id: 'cafe',
+    icon: '◈',
+    name: 'Kafe & Restoran',
+    desc: 'Masa aç → ürün yaz → hesap al → kapat',
+    session: 'Masa / Adisyon',
+    unit: 'Menü',
+    roadmap: 'phase1',
   },
   {
     id: 'ps',
     icon: '▶',
     name: 'PlayStation Cafe',
-    desc: 'Konsol kiralama ve market satışı',
+    desc: 'Konsol + süre + market; kağıt ve kronometre yerine',
     session: 'Konsol / Masa',
-    unit: 'Saatlik + Ürün',
+    unit: 'Saatlik + ürün',
+    roadmap: 'phase1',
   },
   {
     id: 'net',
     icon: '◻',
     name: 'İnternet Cafe',
-    desc: 'Bilgisayar oturumları ve market',
+    desc: 'PC oturumu, dilimli ücret, market',
     session: 'PC No',
-    unit: 'Saatlik + Ürün',
+    unit: 'Saatlik + ürün',
+    roadmap: 'phase1',
   },
+  {
+    id: 'hamam',
+    icon: '♨',
+    name: 'Hamam / SPA',
+    desc: 'Kabin aç → hizmet yaz → süre takibi',
+    session: 'Kabine',
+    unit: 'Hizmet (dk)',
+    roadmap: 'phase1',
+  },
+  {
+    id: 'bilardo',
+    icon: '●',
+    name: 'Bilardo / Langırt',
+    desc: 'Masa aç → süre + içecek',
+    session: 'Masa',
+    unit: 'Süre + ürün',
+    roadmap: 'phase1',
+  },
+  // Faz 2
+  {
+    id: 'oto-yikama',
+    icon: '🚗',
+    name: 'Oto Yıkama',
+    desc: 'Araç gelir → işlemler fişe yazılır',
+    session: 'Araç / plaka',
+    unit: 'Kalem bazlı',
+    roadmap: 'phase2',
+  },
+  {
+    id: 'halisaha',
+    icon: '⚽',
+    name: 'Halı Saha',
+    desc: 'Saha + saat; defter yerine ekran',
+    session: 'Saha / slot',
+    unit: 'Saatlik',
+    roadmap: 'phase2',
+  },
+  {
+    id: 'otopark',
+    icon: '▣',
+    name: 'Otopark',
+    desc: 'Giriş-çıkış, süre ve ücret',
+    session: 'Plaka / bilet',
+    unit: 'Saatlik / günlük',
+    roadmap: 'phase2',
+  },
+  // Faz 3
   {
     id: 'kuru',
     icon: '◇',
     name: 'Kuru Temizleme',
-    desc: 'Sipariş takibi ve teslim yönetimi',
-    session: 'Sipariş / Fiş',
-    unit: 'Parça bazlı',
+    desc: 'Fiş + “teslim edildi mi?” takibi',
+    session: 'Sipariş / fiş',
+    unit: 'Parça',
+    roadmap: 'phase3',
   },
   {
-    id: 'cafe',
-    icon: '◈',
-    name: 'Kafe & Restoran',
-    desc: 'Masa adisyonu ve menü yönetimi',
-    session: 'Masa / Adisyon',
-    unit: 'Menü Ürünleri',
+    id: 'teknik-servis',
+    icon: '🔧',
+    name: 'Teknik Servis',
+    desc: 'Servis fişi ve durum hattı',
+    session: 'Cihaz / fiş',
+    unit: 'İşçilik + parça',
+    roadmap: 'phase3',
+  },
+  // Niş
+  {
+    id: 'cocuk-oyun',
+    icon: '◉',
+    name: 'Çocuk Oyun Alanı',
+    desc: 'Giriş saati → süreye göre ücret',
+    session: 'Çocuk / bileklik',
+    unit: 'Dk / paket',
+    roadmap: 'niche',
+  },
+  {
+    id: 'self-oyun',
+    icon: '▫',
+    name: 'Self Servis Oyun',
+    desc: 'Air hockey vb. süre + kullanım',
+    session: 'Masa / makine',
+    unit: 'Süre',
+    roadmap: 'niche',
+  },
+  {
+    id: 'terzi',
+    icon: '📐',
+    name: 'Terzi',
+    desc: 'Sipariş kağıdı, teslim tarihi',
+    session: 'Sipariş',
+    unit: 'İş kalemi',
+    roadmap: 'niche',
+  },
+  {
+    id: 'matbaa',
+    icon: '🖨',
+    name: 'Matbaa / Baskı',
+    desc: 'İş kartı, parça üretim',
+    session: 'İş emri',
+    unit: 'Adet / iş',
+    roadmap: 'niche',
+  },
+  {
+    id: 'emanet',
+    icon: '🔐',
+    name: 'Emanet / Locker',
+    desc: 'Numara fişi ve teslim',
+    session: 'Dolap no',
+    unit: 'Süre / günlük',
+    roadmap: 'niche',
+  },
+  {
+    id: 'kamp',
+    icon: '⛺',
+    name: 'Kamp / Günlük Kiralama',
+    desc: 'Giriş-çıkış ve konaklama notu',
+    session: 'Birim / çadır',
+    unit: 'Gecelik',
+    roadmap: 'niche',
   },
   {
     id: 'rent',
     icon: '◐',
     name: 'Saatlik Kiralama',
-    desc: 'Alan, oda ve ekipman rezarvasyonu',
+    desc: 'Alan, oda, ekipman slotu',
     session: 'Rezervasyon',
-    unit: 'Saat / Slot',
+    unit: 'Saat',
+    roadmap: 'niche',
+  },
+  // Kapsam dışı örnekler (CRM / booking — Defter değil)
+  {
+    id: 'gym',
+    icon: '◎',
+    name: 'Spor Salonu (üyelik)',
+    desc: 'Üyelik ve CRM ağırlıklı model — ayrı ürün',
+    session: 'Üye',
+    unit: 'Üyelik',
+    roadmap: 'out',
   },
   {
     id: 'kuafor',
     icon: '✂',
-    name: 'Kuaför & Berber',
-    desc: 'Randevu ve personel yönetimi',
+    name: 'Kuaför (randevu-first)',
+    desc: 'Randevu takvimi ağırlıklı — booking uygulaması',
     session: 'Randevu',
-    unit: 'Hizmet (dk bazlı)',
+    unit: 'Hizmet',
+    roadmap: 'out',
   },
 ];
 
@@ -184,59 +298,8 @@ export const APP_ONBOARD_STEPS = [
   },
 ] as const;
 
-const TEMPLATE_PRESETS_RECORD: Record<string, Omit<TemplatePreset, never>> = {
-  hamam: {
-    sessionLabel: 'Kabine / Müşteri',
-    resourceLabel: 'Kabine',
-    categories: [
-      { k: 'hamam', l: 'Hamam' },
-      { k: 'sauna', l: 'Sauna' },
-      { k: 'masaj', l: 'Masaj' },
-      { k: 'kafeterya', l: 'Kafeterya' },
-      { k: 'paket', l: 'Paketler' },
-    ],
-    services: DEMO_SERVICES,
-  },
-  ps: {
-    sessionLabel: 'Konsol / Masa',
-    resourceLabel: 'Konsol',
-    categories: [
-      { k: 'konsol', l: 'Konsol' },
-      { k: 'market', l: 'Market' },
-      { k: 'paket', l: 'Paket' },
-    ],
-    services: [
-      { id: 101, cat: 'konsol', name: 'PS5 1 Saat', price: 170, dur: 60 },
-      { id: 102, cat: 'konsol', name: 'PS5 VIP 1 Saat', price: 230, dur: 60 },
-      { id: 103, cat: 'market', name: 'Enerji İçeceği', price: 65, dur: 0 },
-      { id: 104, cat: 'market', name: 'Cips', price: 45, dur: 0 },
-      { id: 105, cat: 'paket', name: '3 Saat Turnuva Paketi', price: 420, dur: 180 },
-    ],
-  },
-  cafe: {
-    sessionLabel: 'Masa / Adisyon',
-    resourceLabel: 'Masa',
-    categories: [
-      { k: 'icecek', l: 'İçecek' },
-      { k: 'yiyecek', l: 'Yiyecek' },
-      { k: 'tatli', l: 'Tatlı' },
-    ],
-    services: [
-      { id: 201, cat: 'icecek', name: 'Latte', price: 110, dur: 0 },
-      { id: 202, cat: 'icecek', name: 'Filtre Kahve', price: 95, dur: 0 },
-      { id: 203, cat: 'yiyecek', name: 'Club Sandviç', price: 180, dur: 0 },
-      { id: 204, cat: 'tatli', name: 'San Sebastian', price: 165, dur: 0 },
-    ],
-  },
-};
-
 export const DEMO_MOBILE_BREAKPOINT = 1024;
 
 export function getTemplatePreset(sectorId: string): TemplatePreset {
-  const preset = TEMPLATE_PRESETS_RECORD[sectorId] ?? TEMPLATE_PRESETS_RECORD.hamam;
-  return {
-    ...preset,
-    categories: preset.categories.map((c) => ({ ...c })),
-    services: preset.services.map((s) => ({ ...s })),
-  };
+  return resolveTemplateBySector(sectorId).preset;
 }

@@ -2,9 +2,11 @@ import { useEffect, useMemo } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 
 import { DemoApp } from '@/screens/demo/app/demo-app-views';
+import UnknownTemplateScreen from '@/screens/demo/shared/unknown-template.screen';
 import { useLandingUser } from '@/shared/context/landing-user.context';
 import type { DemoMode, DemoSetupPayload } from '@/shared/types/demo.types';
 import { clearPersistedDemoSetup, readPersistedDemoSetup } from '@/shared/utils/demo-setup-storage.util';
+import { hasTemplateForSector, resolveTemplateBySector } from '@/templates/template.resolver';
 
 function modeFromParam(p: string | undefined): DemoMode {
   return p === 'pos' ? 'pos' : 'temel';
@@ -39,7 +41,22 @@ export default function DemoAppScreen() {
     return null;
   }
 
-  const demoKey = `${mode}:${setup.sector}:${setup.businessName}:${setup.sessionLabel}`;
+  if (!hasTemplateForSector(setup.sector)) {
+    return (
+      <UnknownTemplateScreen
+        sectorId={setup.sector}
+        onBack={() => navigate(`/demo/onboarding/${mode === 'pos' ? 'pos' : 'temel'}`, { replace: true })}
+      />
+    );
+  }
+
+  const resolvedPreset = resolveTemplateBySector(setup.sector);
+  const resolvedSetup: DemoSetupPayload = {
+    ...setup,
+    template: resolvedPreset.preset,
+  };
+
+  const demoKey = `${mode}:${resolvedSetup.sector}:${resolvedSetup.businessName}:${resolvedSetup.sessionLabel}`;
 
   const leaveDemo = () => {
     clearPersistedDemoSetup();
@@ -51,7 +68,7 @@ export default function DemoAppScreen() {
       key={demoKey}
       mode={mode}
       onBack={leaveDemo}
-      setup={setup}
+      setup={resolvedSetup}
       landingUser={landingUser}
       onUserChange={setLandingUser}
     />

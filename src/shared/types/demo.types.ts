@@ -1,3 +1,5 @@
+import type { SessionStatus, TimerMode } from '@/domain/session/session.types';
+
 export type DemoMode = 'temel' | 'pos';
 
 export interface LandingUser {
@@ -6,6 +8,9 @@ export interface LandingUser {
   sector?: string;
 }
 
+/** Landing / dokümantasyon: `docs/05-product-scope-and-roadmap.md` ile uyumlu. */
+export type SectorRoadmap = 'phase1' | 'phase2' | 'phase3' | 'niche' | 'out';
+
 export interface SectorRow {
   id: string;
   icon: string;
@@ -13,6 +18,7 @@ export interface SectorRow {
   desc: string;
   session: string;
   unit: string;
+  roadmap?: SectorRoadmap;
 }
 
 export interface DemoServiceRow {
@@ -63,5 +69,21 @@ export interface DemoSession {
   items: DemoSessionItem[];
   createdAt: Date;
   closedAt: Date | null;
-  status: 'open' | 'closed';
+  status: SessionStatus;
+  timerMode: TimerMode;
+  closingReason: 'payment' | 'manual' | null;
+  autoTimerServiceIds: number[];
+  timerPlan: {
+    mode: 'count_up_slice' | 'fixed_duration';
+    sliceMinutes: number | null;
+    fixedMinutes: number | null;
+    warningShown: boolean;
+  };
+  templateSnapshot: {
+    sector: string;
+    templateId: string;
+    sessionLabel: string;
+    resourceLabel: string;
+    timerMode: TimerMode;
+  };
 }

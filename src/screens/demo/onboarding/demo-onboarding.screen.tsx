@@ -5,7 +5,6 @@ import {
   APP_ONBOARD_STEPS,
   C,
   bd,
-  getTemplatePreset,
   mono,
   sans,
   SECTORS,
@@ -13,6 +12,7 @@ import {
 import { useMediaQuery } from '@/shared/hooks/use-media-query.hook';
 import type { DemoMode, DemoSetupPayload } from '@/shared/types/demo.types';
 import { persistDemoSetup } from '@/shared/utils/demo-setup-storage.util';
+import { hasTemplateForSector, resolveTemplateBySector } from '@/templates/template.resolver';
 
 function modeFromParam(p: string | undefined): DemoMode {
   return p === 'pos' ? 'pos' : 'temel';
@@ -24,11 +24,13 @@ export default function DemoOnboardingScreen() {
   const mode = modeFromParam(modeParam);
 
   const [step, setStep] = useState(0);
-  const [sector, setSector] = useState('hamam');
+  const [sector, setSector] = useState('cafe');
   const [businessName, setBusinessName] = useState('Defter Demo Şubesi');
   const [sessionLabel, setSessionLabel] = useState('Kabine');
   const current = APP_ONBOARD_STEPS[step];
-  const preset = getTemplatePreset(sector);
+  const templateResolution = resolveTemplateBySector(sector);
+  const preset = templateResolution.preset;
+  const selectableSectors = SECTORS.filter((entry) => hasTemplateForSector(entry.id));
   const obNarrow = useMediaQuery('(max-width: 640px)');
 
   const onBack = () => {
@@ -126,20 +128,24 @@ export default function DemoOnboardingScreen() {
         </div>
 
         {current.id === 'sector' && (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 140px), 1fr))',
-              gap: 10,
-            }}
-          >
-            {SECTORS.map((s) => (
+          <div>
+            <p style={{ fontSize: 13, color: C.mid, lineHeight: 1.5, marginBottom: 12 }}>
+              Faz 1 şablonları: kağıt adisyon ve fiş kullanan işletmeler için. Randevu veya üyelik CRM ürünü değil.
+            </p>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 140px), 1fr))',
+                gap: 10,
+              }}
+            >
+            {selectableSectors.map((s) => (
               <button
                 key={s.id}
                 type="button"
                 onClick={() => {
                   setSector(s.id);
-                  const nextPreset = getTemplatePreset(s.id);
+                  const nextPreset = resolveTemplateBySector(s.id).preset;
                   setSessionLabel(nextPreset.resourceLabel);
                 }}
                 style={{
@@ -155,6 +161,7 @@ export default function DemoOnboardingScreen() {
                 <div style={{ fontSize: 11, color: C.light, marginTop: 2 }}>{s.session}</div>
               </button>
             ))}
+            </div>
           </div>
         )}
 
@@ -204,6 +211,11 @@ export default function DemoOnboardingScreen() {
         {current.id === 'ready' && (
           <div style={{ border: bd, borderRadius: 10, padding: 16, background: C.bg }}>
             <div style={{ fontSize: 12, color: C.mid, marginBottom: 10 }}>Seçilen şablon ile otomatik yüklenecek:</div>
+            {templateResolution.usedFallback && (
+              <div style={{ fontSize: 12, color: C.red, marginBottom: 10 }}>
+                Seçilen sektör için kayıtlı şablon bulunamadı, varsayılan şablon kullanılacak.
+              </div>
+            )}
             <div
               style={{
                 display: 'grid',

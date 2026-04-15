@@ -2,7 +2,8 @@
 
 ## Bu Is Aslinda Ne?
 
-Bu proje, farkli sektorlerde ayni cekirdek akisi kullanan bir otomasyon urununun on-yuz prototipidir.
+Bu proje, **kağıt adisyon / fiş / takip defteri** kullanan işletmeler için dijital operasyon prototipidir; randevu-first veya üyelik CRM ürünü değildir (bkz. `docs/05-product-scope-and-roadmap.md`).
+
 Temel akis:
 
 1. Landing (istege bagli: navbar uzerinden giris — demo icinde ayri login yok)
@@ -23,6 +24,10 @@ Amac, landing + demo uzerinden urunun ne oldugunu gostermek ve temel operasyon a
 - Hizmetler: yeni hizmet formu kart duzenine alindi (mobil uyumlu satir kirilimi).
 - Profil ekrani: e-posta, telefon, sifre, sektor; demo alt bar sol **hesap chip** ile aciliyor (header’daki email kaldirildi).
 - Onceki surum: template preset (`hamam`, `ps`, `cafe`), hizmet/kategori CRUD, landing ozellik kartlari genisletmesi.
+
+## Roadmap (urun)
+
+- Kaynak: `docs/05-product-scope-and-roadmap.md` — Faz 1: kafe, PS/net, hamam, bilardo; Faz 2–3 ve niş sektörler sırayla.
 
 ## Siradaki Isler (Backlog)
 

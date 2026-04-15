@@ -72,3 +72,8 @@ Uygulamada yapılanlar: `index.html` başlık ve meta açıklama (~155 karakter)
 **Canlıya alırken:** `index.html` ve `public/sitemap.xml` / `robots.txt` içindeki `https://defter.app` adresini gerçek alan adınızla değiştirin. İsteğe bağlı: kök `.env` içinde `VITE_SITE_URL` — yapılandırılmış veride `window` yokken fallback için. **Google Search Console:** site doğrulama, `sitemap.xml` gönderimi, **PageSpeed / Core Web Vitals** izleme; (LCP için ileride font `@import`’u `index.html` üzerinden `link` ile yüklemek düşünülebilir).
 
 İçerik genişletmesi (blog, programatik `/ai-tools/...` sayfaları, backlink) bu repoda yok; ürün stratejisi bu dokümandaki planla ayrıca yürütülmeli.
+
+## Dokumantasyon
+
+- Uygulanabilir urun ve teknik plan dokumanlari `docs/` altindadir.
+- Baslangic noktasi: `docs/README.md`
