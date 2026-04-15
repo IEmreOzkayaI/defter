@@ -9,19 +9,6 @@ declare global {
 }
 
 /**
- * `env-config.js` boş string yazdığında `"" || buildTime` yanlışlıkla build-time URL’e düşer → admin CORS.
- * Key runtime’da tanımlıysa (boş dahil) sadece o değeri kullan.
- */
-function resolveBackendBaseRaw(): string {
-  const cfg = typeof window !== 'undefined' ? window.__DEFTER_RUNTIME_CONFIG__ : undefined;
-  const fromRuntime = cfg !== undefined && 'VITE_BACKEND_BASE_URL' in cfg;
-  if (fromRuntime) {
-    return String(cfg!.VITE_BACKEND_BASE_URL ?? '').trim();
-  }
-  return String(import.meta.env.VITE_BACKEND_BASE_URL ?? '').trim();
-}
-
-/**
  * Doğrudan API origin’i (CORS gerekir). Şema yoksa tarayıcı göreli path sanar → nginx 405.
  * Göreli path: `/api` gibi — nginx proxy ile aynı origin.
  */
@@ -48,8 +35,19 @@ function normalizeProductionBackendBase(raw: string): string {
   return absolute;
 }
 
-const fromEnv = resolveBackendBaseRaw();
-const normalizedProd = fromEnv ? normalizeProductionBackendBase(fromEnv) : '';
+/**
+ * Production: sadece `env-config.js` (runtime). Build-time `import.meta.env.VITE_*` yok sayılır —
+ * aksi halde Docker build’da gömülen `https://…backend…` tüm istekleri cross-origin yapar (admin PATCH/DELETE CORS).
+ */
+function resolveProductionBackendBase(): string {
+  const cfg = typeof window !== 'undefined' ? window.__DEFTER_RUNTIME_CONFIG__ : undefined;
+  if (!cfg || !Object.prototype.hasOwnProperty.call(cfg, 'VITE_BACKEND_BASE_URL')) {
+    return '/api';
+  }
+  const raw = String(cfg.VITE_BACKEND_BASE_URL ?? '').trim();
+  if (!raw) return '/api';
+  return normalizeProductionBackendBase(raw);
+}
 
-/** Dev: Vite proxy. Prod: boş → nginx /api proxy (CORS yok); dolu → doğrudan API. */
-export const BACKEND_BASE_URL = import.meta.env.DEV ? '/api' : normalizedProd.length > 0 ? normalizedProd : '/api';
+/** Dev: Vite `/api` proxy. Prod: yalnızca runtime env-config (+ nginx upstream). */
+export const BACKEND_BASE_URL = import.meta.env.DEV ? '/api' : resolveProductionBackendBase();
