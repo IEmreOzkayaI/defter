@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { useEffect, useRef } from 'react';
 
-import { C, bd, mono } from '@/shared/constants/demo.constants';
+import { C, bd } from '@/shared/constants/demo.constants';
 
 /** Boşsa `public/video.mp4` — `.env`: `VITE_LANDING_HERO_VIDEO` */
 const HERO_SRC = import.meta.env.VITE_LANDING_HERO_VIDEO?.trim() || '/video.mp4';
