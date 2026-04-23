@@ -60,7 +60,10 @@ export default function DemoAppScreen() {
 
   const leaveDemo = () => {
     clearPersistedDemoSetup();
-    navigate('/', { replace: true });
+    navigate('/', {
+      replace: true,
+      state: { openContact: true, contactIntent: 'from_demo' as const },
+    });
   };
 
   return (

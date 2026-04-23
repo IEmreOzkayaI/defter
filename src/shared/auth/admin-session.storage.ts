@@ -1,4 +1,4 @@
-const SESSION_KEY = 'defter_admin_session_v1';
+const SESSION_KEY = 'vaha_admin_session_v1';
 
 export function isAdminSessionActive(): boolean {
   return Boolean(sessionStorage.getItem(SESSION_KEY));

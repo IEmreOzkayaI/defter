@@ -1,19 +1,19 @@
 /** Sayfa SSS metni — JSON-LD FAQPage ile birebir uyumlu olmalı. */
 export const FAQ_LANDING_ITEMS: { question: string; answer: string }[] = [
   {
-    question: 'Defter nedir?',
+    question: 'Vaha nedir?',
     answer:
-      'Defter, kağıt adisyon, fiş veya iş takip defteri kullanan işletmelerin dijital karşılığıdır: işlem açın, kalemleri yazın, açık hesapları takip edin, tahsilatla kapatın. Randevu takvimi veya üyelik CRM’i değil; anlık operasyon defteri.',
+      'Vaha; hamam, sauna ve spa işletmeleri için otomasyon panelidir: kabin/anahtar oturumu açın, hamam-sauna-masaj hizmet kalemlerini ekleyin, süreyi takip edin, tahsilatla kapatın. İşletme içi operasyonu sadeleştirir; POS entegrasyonu isteğe bağlıdır.',
   },
   {
-    question: 'Hangi sektörler için uygun?',
+    question: '“Spa randevu yazılımı” arayanlar için uygun mu?',
     answer:
-      'Önce kağıt kullanan iş modelleri: kafe ve restoran, PlayStation ve internet cafe, hamam / SPA, bilardo ve langırt gibi. Demoda Faz 1 şablonları (kafe, PS, net, hamam, bilardo) seçilebilir. Randevu-first kuaför veya üyelik ağırlıklı spor salonu gibi işler Defter kapsamı dışında tutulur; bunlar ayrı booking / CRM ürünüdür.',
+      'Evet — arama niyetindeki “spa randevu”, “hamam rezervasyon”, “sauna rezervasyon” gibi ifadelerle uyumlu şekilde konumlanır. Dene turu ağırlıklı olarak sahada (resepsiyon–kabin) yürüyen oturum akışını gösterir; online rezervasyon kanalı ürün yol haritasında ayrıca genişletilir.',
   },
   {
-    question: 'Defter randevu veya CRM uygulaması mı?',
+    question: 'Sadece hamam mı, sauna ve masaj da var mı?',
     answer:
-      'Hayır. Psikolog, diyetisyen, randevu ağırlıklı kuaför veya üyelik sistemli spor salonu gibi modeller bilinçli olarak dışarıda bırakılır. Defter; açık adisyon ve fiş takibine odaklanır.',
+      'Evet. Katalog hamam, sauna, masaj, kafeterya ve paket kalemleriyle gelir; kabin/anahtar bazlı oturum ve süre takibi spa işletmelerinin günlük işine göre kurgulanır.',
   },
   {
     question: 'POS modülü ne işe yarar?',
@@ -26,8 +26,8 @@ export const FAQ_LANDING_ITEMS: { question: string; answer: string }[] = [
       'Temel plan yıllık sabit ücretle sınırsız operasyon ve çekirdek özellikleri kapsar; Temel + POS planında POS entegrasyonu ve cihaz yönetimi eklenir. Güncel rakamlar için iletişime geçin.',
   },
   {
-    question: 'Canlı demo ücretsiz mi?',
+    question: 'Dene ücretsiz mi?',
     answer:
-      'Evet; web üzerinden örnek verilerle canlı demoyu ücretsiz deneyebilir, Faz 1 şablonları ve akışı gerçekçi şekilde gezebilirsiniz.',
+      'Evet; web üzerinden örnek verilerle denemeyi ücretsiz kullanabilir, hamam–sauna–spa otomasyon akışını gerçekçi şekilde gezebilirsiniz.',
   },
 ];

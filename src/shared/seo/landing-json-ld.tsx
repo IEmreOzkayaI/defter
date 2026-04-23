@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 
 import { ONBOARD_STEPS } from '@/shared/constants/demo.constants';
 import { FAQ_LANDING_ITEMS } from '@/shared/seo/faq-landing.data';
-import { SEO_DEFAULT_DESCRIPTION, getPublicSiteOrigin } from '@/shared/seo/site-config';
+import { SEO_BRAND_NAME, SEO_DEFAULT_DESCRIPTION, getPublicSiteOrigin } from '@/shared/seo/site-config';
 
 export function LandingJsonLd() {
   const jsonLd = useMemo(() => {
@@ -12,7 +12,7 @@ export function LandingJsonLd() {
     const org = {
       '@type': 'Organization',
       '@id': `${url}#organization`,
-      name: 'Defter',
+      name: SEO_BRAND_NAME,
       url: origin || undefined,
       description: SEO_DEFAULT_DESCRIPTION,
     };
@@ -20,7 +20,7 @@ export function LandingJsonLd() {
     const website = {
       '@type': 'WebSite',
       '@id': `${url}#website`,
-      name: 'Defter',
+      name: SEO_BRAND_NAME,
       url,
       description: SEO_DEFAULT_DESCRIPTION,
       publisher: { '@id': `${url}#organization` },
@@ -30,16 +30,16 @@ export function LandingJsonLd() {
     const software = {
       '@type': 'SoftwareApplication',
       '@id': `${url}#software`,
-      name: 'Defter',
+      name: SEO_BRAND_NAME,
       applicationCategory: 'BusinessApplication',
       operatingSystem: 'Web',
       browserRequirements: 'Modern tarayıcı (Chrome, Safari, Firefox, Edge)',
       description: SEO_DEFAULT_DESCRIPTION,
       offers: {
         '@type': 'Offer',
-        price: '10000',
         priceCurrency: 'TRY',
-        description: 'Defter Temel — yıllık tek ödeme (örnek bilgi; güncel fiyat için iletişim).',
+        availability: 'https://schema.org/OnlineOnly',
+        description: 'Temel ve Temel + POS paketleri; güncel fiyat ve teklif için iletişime geçin.',
       },
       publisher: { '@id': `${url}#organization` },
     };
@@ -60,9 +60,9 @@ export function LandingJsonLd() {
     const howTo = {
       '@type': 'HowTo',
       '@id': `${url}#howto`,
-      name: 'Defter ile nasıl başlanır?',
+      name: 'Vaha ile hamam / sauna / spa otomasyonuna nasıl başlanır?',
       description:
-        'Şablon seçimi (kağıt fiş kullanan işletme modeli), kategori ve hizmet kurulumu, POS tanımları, adisyon, tahsilat ve rapor adımları.',
+        'İşletme bilgisi, hizmet kataloğu, kabin/anahtar oturumu, süre takibi, tahsilat/POS ve günlük rapor adımları (Dene turu ile aynı akış).',
       step: ONBOARD_STEPS.map((s, i) => ({
         '@type': 'HowToStep',
         position: i + 1,

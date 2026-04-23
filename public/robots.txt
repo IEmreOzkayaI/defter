@@ -5,4 +5,4 @@ Allow: /
 # Demo akışları ince içerik / dönüşüm sayfası değil; taramayı sınırla
 Disallow: /demo/
 
-Sitemap: https://defter.app/sitemap.xml
+Sitemap: https://vaha.app/sitemap.xml

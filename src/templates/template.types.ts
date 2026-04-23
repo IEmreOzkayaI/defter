@@ -1,7 +1,7 @@
 import type { PricingType, SessionStatus, TimerMode } from '@/domain/session/session.types';
 import type { DemoServiceRow, TemplateCategory, TemplatePreset } from '@/shared/types/demo.types';
 
-export type TemplateSector = 'net' | 'ps' | 'hamam' | 'cafe' | 'bilardo';
+export type TemplateSector = 'hamam';
 
 export type TemplateAction = 'add_service' | 'change_qty' | 'close_session' | 'send_to_pos';
 

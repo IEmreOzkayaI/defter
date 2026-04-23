@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 
 import {
   APP_ONBOARD_STEPS,
@@ -7,12 +7,11 @@ import {
   bd,
   mono,
   sans,
-  SECTORS,
 } from '@/shared/constants/demo.constants';
 import { useMediaQuery } from '@/shared/hooks/use-media-query.hook';
 import type { DemoMode, DemoSetupPayload } from '@/shared/types/demo.types';
 import { persistDemoSetup } from '@/shared/utils/demo-setup-storage.util';
-import { hasTemplateForSector, resolveTemplateBySector } from '@/templates/template.resolver';
+import { resolveTemplateBySector } from '@/templates/template.resolver';
 
 function modeFromParam(p: string | undefined): DemoMode {
   return p === 'pos' ? 'pos' : 'temel';
@@ -21,19 +20,16 @@ function modeFromParam(p: string | undefined): DemoMode {
 export default function DemoOnboardingScreen() {
   const navigate = useNavigate();
   const { mode: modeParam } = useParams();
-  const [searchParams] = useSearchParams();
   const mode = modeFromParam(modeParam);
-  const requestedSector = searchParams.get('sector') ?? 'cafe';
-  const initialSector = hasTemplateForSector(requestedSector) ? requestedSector : 'cafe';
+  const isPos = mode === 'pos';
 
   const [step, setStep] = useState(0);
-  const [sector, setSector] = useState(initialSector);
-  const [businessName, setBusinessName] = useState('Defter Demo Şubesi');
-  const [sessionLabel, setSessionLabel] = useState('Kabine');
+  const sector = 'hamam';
+  const [businessName, setBusinessName] = useState('Vaha Demo Şubesi');
+  const [sessionLabel, setSessionLabel] = useState('Kabin');
   const current = APP_ONBOARD_STEPS[step];
   const templateResolution = resolveTemplateBySector(sector);
   const preset = templateResolution.preset;
-  const selectableSectors = SECTORS.filter((entry) => hasTemplateForSector(entry.id));
   const obNarrow = useMediaQuery('(max-width: 640px)');
 
   const onBack = () => {
@@ -47,7 +43,7 @@ export default function DemoOnboardingScreen() {
     }
     const payload: DemoSetupPayload = {
       sector,
-      businessName: businessName.trim() || 'Defter Demo Şubesi',
+      businessName: businessName.trim() || 'Vaha Demo Şubesi',
       sessionLabel: sessionLabel.trim() || preset.resourceLabel,
       template: preset,
     };
@@ -109,6 +105,38 @@ export default function DemoOnboardingScreen() {
             <div style={{ fontSize: 'clamp(18px, 4.5vw, 24px)', fontWeight: 700, color: C.dark, lineHeight: 1.2 }}>
               {current.title}
             </div>
+            {isPos && (
+              <div
+                style={{
+                  marginTop: 8,
+                  padding: '8px 10px',
+                  borderRadius: 8,
+                  border: bd,
+                  background: C.accentSoft,
+                  fontSize: 12,
+                  color: C.mid,
+                  lineHeight: 1.45,
+                }}
+              >
+                <strong style={{ color: C.dark }}>POS demosu:</strong> oturumda sepeti doldurduktan sonra cihaz seçip «POS'a gönder» simülasyonunu da deneyebilirsiniz.
+              </div>
+            )}
+            {!isPos && (
+              <div
+                style={{
+                  marginTop: 8,
+                  padding: '8px 10px',
+                  borderRadius: 8,
+                  border: bd,
+                  background: C.bg,
+                  fontSize: 12,
+                  color: C.mid,
+                  lineHeight: 1.45,
+                }}
+              >
+                <strong style={{ color: C.dark }}>Temel demo:</strong> POS adımı yok; oturum aç → sepet → tahsilatla kapat akışını deneyin.
+              </div>
+            )}
             <div style={{ fontSize: 13, color: C.mid, marginTop: 6, lineHeight: 1.45 }}>{current.desc}</div>
           </div>
           <button
@@ -129,44 +157,6 @@ export default function DemoOnboardingScreen() {
             ←
           </button>
         </div>
-
-        {current.id === 'sector' && (
-          <div>
-            <p style={{ fontSize: 13, color: C.mid, lineHeight: 1.5, marginBottom: 12 }}>
-              Faz 1 şablonları: kağıt adisyon ve fiş kullanan işletmeler için. Randevu veya üyelik CRM ürünü değil.
-            </p>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 140px), 1fr))',
-                gap: 10,
-              }}
-            >
-            {selectableSectors.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => {
-                  setSector(s.id);
-                  const nextPreset = resolveTemplateBySector(s.id).preset;
-                  setSessionLabel(nextPreset.resourceLabel);
-                }}
-                style={{
-                  padding: 12,
-                  borderRadius: 8,
-                  border: `1px solid ${sector === s.id ? C.dark : C.border}`,
-                  background: sector === s.id ? C.accentSoft : C.bg,
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                }}
-              >
-                <div style={{ fontSize: 13, fontWeight: 700, color: C.dark }}>{s.name}</div>
-                <div style={{ fontSize: 11, color: C.light, marginTop: 2 }}>{s.session}</div>
-              </button>
-            ))}
-            </div>
-          </div>
-        )}
 
         {current.id === 'business' && (
           <div>
@@ -191,7 +181,7 @@ export default function DemoOnboardingScreen() {
             </div>
             <div>
               <div style={{ fontSize: 10, color: C.light, letterSpacing: 1, fontFamily: mono, marginBottom: 6 }}>
-                OTURUM ETİKETİ
+                SESSION ETİKETİ
               </div>
               <input
                 value={sessionLabel}

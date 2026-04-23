@@ -21,5 +21,5 @@ export function getSessionsNavLabel(resourceLabel: string, sectorId: string): st
     bilardo: 'MASALAR',
   };
   if (sectorId && bySector[sectorId]) return bySector[sectorId];
-  return 'OTURUMLAR';
+  return 'İŞLEMLER';
 }

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { useEffect, useRef } from 'react';
 
-import { C, bd } from '@/shared/constants/demo.constants';
+import { C } from '@/shared/constants/demo.constants';
 
 /** Boşsa `public/video.mp4` — `.env`: `VITE_LANDING_HERO_VIDEO` */
 const HERO_SRC = import.meta.env.VITE_LANDING_HERO_VIDEO?.trim() || '/video.mp4';
@@ -26,18 +26,12 @@ function normalizeFileOrCdnSrc(src: string): string {
   return `/${s}`;
 }
 
-/** Tanıtım medyası (landing “Tanıtım” bölümü) — tam genişlik kart */
 function VideoShell({ children }: { children: ReactNode }) {
   return (
-    <div className="fu4" style={{ width: '100%' }}>
+    <div className="w-full animate-landing-fade-up [animation-delay:120ms]">
       <div
-        style={{
-          borderRadius: 20,
-          border: bd,
-          background: C.card,
-          overflow: 'hidden',
-          boxShadow: '0 28px 90px rgba(0,0,0,.09), 0 4px 12px rgba(0,0,0,.05)',
-        }}
+        className="overflow-hidden rounded-2xl border bg-white shadow-[0_28px_90px_-20px_rgba(0,0,0,0.12)] ring-1 ring-stone-900/[0.04]"
+        style={{ borderColor: C.border }}
       >
         {children}
       </div>
@@ -45,7 +39,7 @@ function VideoShell({ children }: { children: ReactNode }) {
   );
 }
 
-/** «Nasıl başlanır» önizlemesi — yerel mp4 varsayılan sessiz otomatik oynar; kullanıcı kontrollerden ses açabilir. */
+/** Tanıtım medyası — yerel mp4 varsayılan sessiz otomatik oynar. */
 export function LandingHeroMedia() {
   const src = HERO_SRC;
 
@@ -53,12 +47,12 @@ export function LandingHeroMedia() {
   if (yt) {
     return (
       <VideoShell>
-        <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, background: '#0a0a0a' }}>
+        <div className="relative aspect-video bg-[#0a0a0a]">
           <iframe
-            title="Defter tanıtım videosu"
+            title="Vaha tanıtım videosu"
             loading="lazy"
             src={`https://www.youtube-nocookie.com/embed/${yt}?rel=0&modestbranding=1`}
-            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+            className="absolute inset-0 h-full w-full border-0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen
           />
@@ -71,12 +65,12 @@ export function LandingHeroMedia() {
   if (vimeo) {
     return (
       <VideoShell>
-        <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, background: '#0a0a0a' }}>
+        <div className="relative aspect-video bg-[#0a0a0a]">
           <iframe
-            title="Defter tanıtım videosu"
+            title="Vaha tanıtım videosu"
             loading="lazy"
             src={`https://player.vimeo.com/video/${vimeo}?badge=0`}
-            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+            className="absolute inset-0 h-full w-full border-0"
             allow="autoplay; fullscreen; picture-in-picture"
             allowFullScreen
           />
@@ -90,34 +84,15 @@ export function LandingHeroMedia() {
   if (isGifPath(mediaSrc)) {
     return (
       <VideoShell>
-        <div
-          style={{
-            position: 'relative',
-            width: '100%',
-            background: '#151515',
-            aspectRatio: '16 / 9',
-            maxHeight: 'min(72vh, 760px)',
-            minHeight: 280,
-            overflow: 'hidden',
-          }}
-        >
+        <div className="relative aspect-video max-h-[min(72vh,760px)] min-h-[280px] overflow-hidden bg-[#151515]">
           <img
             src={mediaSrc}
             width={1280}
             height={720}
-            alt="Farklı sektörlerde otomasyon ve sipariş yönetimi — Defter"
+            alt="Hamam, sauna ve spa otomasyonu — kabin oturumu, hizmetler ve tahsilat (Vaha)"
             decoding="async"
             loading="lazy"
-            style={{
-              position: 'absolute',
-              left: 0,
-              top: 0,
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              objectPosition: 'center top',
-              display: 'block',
-            }}
+            className="absolute inset-0 h-full w-full object-cover object-top"
           />
         </div>
       </VideoShell>
@@ -152,15 +127,7 @@ function AutoplayMutedVideo({ src }: { src: string }) {
       autoPlay
       loop
       preload="auto"
-      style={{
-        width: '100%',
-        display: 'block',
-        aspectRatio: '16 / 9',
-        maxHeight: 'min(72vh, 760px)',
-        minHeight: 260,
-        objectFit: 'cover',
-        background: '#0a0a0a',
-      }}
+      className="block aspect-video max-h-[min(72vh,760px)] min-h-[260px] w-full bg-[#0a0a0a] object-cover"
     >
       <source src={src} />
       Tarayıcınız video oynatmayı desteklemiyor.

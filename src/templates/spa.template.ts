@@ -4,8 +4,8 @@ export const spaTemplate: SectorTemplate = {
   id: 'spa-v1',
   sector: 'hamam',
   sessionType: 'resource_session',
-  resourceName: 'Kabine',
-  resourcePreset: ['Anahtar 1', 'Anahtar 2', 'Anahtar 3', 'Anahtar 4', 'Anahtar 5', 'Anahtar 6'],
+  resourceName: 'Kabin',
+  resourcePreset: ['Kabin 1', 'Kabin 2', 'Kabin 3', 'Kabin 4', 'Kabin 5', 'Kabin 6'],
   timer: {
     mode: 'count_down',
     defaultDurationMin: 60,
@@ -14,11 +14,11 @@ export const spaTemplate: SectorTemplate = {
     type: 'flat',
   },
   labels: {
-    session: 'Kabine / Müşteri',
-    resource: 'Kabine',
-    sessionsNav: 'KABİNELER',
-    addServiceCta: 'Hizmet Ekle',
-    closeSessionCta: 'Tahsil Et & Kapat',
+    session: 'Kabin oturumu',
+    resource: 'Kabin',
+    sessionsNav: 'İşlemler',
+    addServiceCta: 'Hizmet ekle',
+    closeSessionCta: 'Tahsil et ve kapat',
   },
   actions: ['add_service', 'change_qty', 'close_session', 'send_to_pos'],
   workflow: [

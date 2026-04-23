@@ -36,7 +36,7 @@ async function request<TResponse>(path: string, init?: RequestInit): Promise<TRe
 
 function unwrapData<T>(payload: T | ApiEnvelope<T>): T {
   if (payload && typeof payload === 'object' && 'data' in payload) {
-    const maybeData = (payload as ApiEnvelope<T>).data;
+    const maybeData = payload.data;
     if (maybeData !== undefined) return maybeData;
   }
   return payload as T;

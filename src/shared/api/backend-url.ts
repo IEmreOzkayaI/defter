@@ -4,6 +4,8 @@ type RuntimeConfig = {
 
 declare global {
   interface Window {
+    __VAHA_RUNTIME_CONFIG__?: RuntimeConfig;
+    /** @deprecated Eski deploylar için geriye dönük uyumluluk */
     __DEFTER_RUNTIME_CONFIG__?: RuntimeConfig;
   }
 }
@@ -26,9 +28,8 @@ function normalizeProductionBackendBase(raw: string): string {
   }
 
   if (typeof window !== 'undefined' && /\.railway\.internal\b/i.test(absolute)) {
-    // eslint-disable-next-line no-console
     console.error(
-      '[Defter] Tarayıcıdan *.railway.internal kullanılamaz. Boş bırakıp nginx /api proxy kullanın veya public https API URL verin.',
+      '[Vaha] Tarayıcıdan *.railway.internal kullanılamaz. Boş bırakıp nginx /api proxy kullanın veya public https API URL verin.',
     );
   }
 
@@ -40,7 +41,10 @@ function normalizeProductionBackendBase(raw: string): string {
  * aksi halde Docker build’da gömülen `https://…backend…` tüm istekleri cross-origin yapar (admin PATCH/DELETE CORS).
  */
 function resolveProductionBackendBase(): string {
-  const cfg = typeof window !== 'undefined' ? window.__DEFTER_RUNTIME_CONFIG__ : undefined;
+  const cfg =
+    typeof window !== 'undefined'
+      ? window.__VAHA_RUNTIME_CONFIG__ ?? window.__DEFTER_RUNTIME_CONFIG__
+      : undefined;
   if (!cfg || !Object.prototype.hasOwnProperty.call(cfg, 'VITE_BACKEND_BASE_URL')) {
     return '/api';
   }

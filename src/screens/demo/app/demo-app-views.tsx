@@ -16,7 +16,7 @@ import { fmt } from '@/shared/utils/format.util';
 import { mkSess, resetSessionIdCounterForTests } from '@/shared/utils/mk-session.util';
 import { getSessionsNavLabel } from '@/shared/utils/session-label.util';
 import { useThermaMobile } from '@/shared/hooks/use-therma-mobile.hook';
-import type { DemoMode, DemoServiceRow, DemoSetupPayload, LandingUser } from '@/shared/types/demo.types';
+import type { DemoMode, DemoServiceRow, DemoSession, DemoSetupPayload, LandingUser } from '@/shared/types/demo.types';
 import { resolveTemplateBySector } from '@/templates/template.resolver';
 
 export function DemoServiceDrawer({ pickerCats, cat, setCat, filtered, onAddService, onClose }) {
@@ -295,7 +295,7 @@ export function DemoApp({
     templateMeta.labels.sessionsNav || getSessionsNavLabel(template.resourceLabel || sessionLabel, sectorId);
   const addServiceLabel = templateMeta.labels.addServiceCta;
   const closeSessionLabel = templateMeta.labels.closeSessionCta;
-  const resourceTitle = (templateMeta.resourceName || template.resourceLabel || sessionLabel || "Kaynak").toUpperCase();
+  const presetSectionTitle = /kabin/i.test(templateMeta.resourceName || '') ? 'Hazır kabinler' : 'Hızlı başlat';
   const sessionSeed = {
     sector: sectorId,
     templateId: templateMeta.id,
@@ -311,17 +311,14 @@ export function DemoApp({
   const [serviceCatalog, setServiceCatalog] = useState(() => template.services.map((s) => ({ kdv: 10, active: true, ...s })));
   const [serviceCategories, setServiceCategories] = useState(template.categories);
   const [profile, setProfile] = useState(() => ({
-    email: landingUser?.email || "demo@defter.app",
+    email: landingUser?.email || "demo@vaha.app",
     phone: landingUser?.phone || "",
-    sector: setup?.sector || landingUser?.sector || sectorId,
     password: "",
-    defaultSliceMinutes: 60,
   }));
   const [toast, setToast] = useState(null);
   const [addingName, setAddingName] = useState(false);
   const [newName, setNewName] = useState("");
   const [selectedPresetResource, setSelectedPresetResource] = useState(readyResources[0] || "");
-  const [selectedPackageId, setSelectedPackageId] = useState("");
   const [confirmId, setConfirmId] = useState(null);
   const [expiryAlertId, setExpiryAlertId] = useState<number | null>(null);
   const [showPosModal, setShowPosModal] = useState(false);
@@ -331,6 +328,12 @@ export function DemoApp({
   const isMobile = useThermaMobile();
   /** Mobil: oturum listesi vs sepet/detay (therma-pos ile uyumlu) */
   const [sessionUi, setSessionUi] = useState("list");
+
+  const DEMO_GUIDE_LS = "vaha_demo_happy_path_v1";
+  const [guideDismissed, setGuideDismissed] = useState(() =>
+    typeof window !== "undefined" && window.localStorage.getItem(DEMO_GUIDE_LS) === "1",
+  );
+  const [posDemoDone, setPosDemoDone] = useState(false);
 
   useEffect(() => {
     resetSessionIdCounterForTests(100);
@@ -342,7 +345,12 @@ export function DemoApp({
 
   useEffect(() => {
     if (!landingUser?.email) return;
-    setProfile((p) => ({ ...p, email: landingUser.email, phone: landingUser.phone || p.phone, sector: landingUser.sector || p.sector }));
+    setProfile((p) => ({
+      ...p,
+      email: landingUser.email,
+      phone: landingUser.phone || p.phone,
+      sector: 'hamam',
+    }));
   }, [landingUser]);
 
   const showToast = (m) => { setToast(m); setTimeout(() => setToast(null), 2200); };
@@ -363,10 +371,21 @@ export function DemoApp({
   const timedServices = serviceCatalog
     .filter((service) => service.active !== false && service.dur > 0)
     .sort((a, b) => a.dur - b.dur);
-  const isMeteredSector = sectorId === "ps" || sectorId === "net";
-  const packageServices = isMeteredSector
-    ? serviceCatalog.filter((service) => service.active !== false && service.cat === "paket" && service.dur > 0)
-    : [];
+  const defaultSessionMinutes = Math.max(1, templateMeta.timer.defaultDurationMin || 60);
+  const computeDefaultTimerPlan = (): DemoSession['timerPlan'] => {
+    if (templateMeta.timer.mode === 'count_down') {
+      return { mode: 'fixed_duration', sliceMinutes: null, fixedMinutes: defaultSessionMinutes, warningShown: false };
+    }
+    if (templateMeta.timer.mode === 'count_up') {
+      return {
+        mode: 'count_up_slice',
+        sliceMinutes: defaultSessionMinutes,
+        fixedMinutes: null,
+        warningShown: false,
+      };
+    }
+    return { mode: 'fixed_duration', sliceMinutes: null, fixedMinutes: null, warningShown: false };
+  };
   const maxW = Math.max(...WEEKLY.map(d => d.v));
   const report = buildDailySessionReport(sessions);
   const closedRevenue = report.revenue;
@@ -398,18 +417,10 @@ export function DemoApp({
     setSelectedPresetResource(readyResources[0]);
   }, [readyResources, selectedPresetResource]);
 
-  useEffect(() => {
-    if (packageServices.length === 0) {
-      setSelectedPackageId("");
-      return;
-    }
-    if (selectedPackageId && packageServices.some((service) => String(service.id) === selectedPackageId)) return;
-    setSelectedPackageId(String(packageServices[0].id));
-  }, [packageServices, selectedPackageId]);
-
-  const openPresetSession = () => {
-    const resourceName = selectedPresetResource.trim();
+  const openPresetSession = (resourceNameOverride?: string) => {
+    const resourceName = (resourceNameOverride ?? selectedPresetResource).trim();
     if (!resourceName) return;
+    if (resourceNameOverride) setSelectedPresetResource(resourceNameOverride);
     const alreadyOpen = open.find((session) => session.name === resourceName);
     if (alreadyOpen) {
       setActiveId(alreadyOpen.id);
@@ -417,41 +428,30 @@ export function DemoApp({
       showToast(`"${resourceName}" zaten acik`);
       return;
     }
-    const defaultSliceMinutes = Math.max(1, Number(profile.defaultSliceMinutes) || 60);
-    const selectedPackage = packageServices.find((service) => String(service.id) === selectedPackageId) ?? null;
-    const timerPlan = selectedPackage
-      ? {
-          mode: "fixed_duration",
-          sliceMinutes: null,
-          fixedMinutes: selectedPackage.dur,
-          warningShown: false,
-        }
-      : {
-          mode: "count_up_slice",
-          sliceMinutes: defaultSliceMinutes,
-          fixedMinutes: null,
-          warningShown: false,
-        };
-    const s = mkSess(resourceName, sessionSeed, { startImmediately: true, timerPlan });
-    const sessionToOpen = selectedPackage
-      ? {
-          ...s,
-          items: [{ ...selectedPackage, qty: 1 }],
-        }
-      : s;
-    setSessions((p) => [...p, sessionToOpen]);
-    setActiveId(sessionToOpen.id);
+    const timerPlan = computeDefaultTimerPlan();
+    const timerMode: DemoSession['timerMode'] =
+      timerPlan.mode === 'count_up_slice'
+        ? 'count_up'
+        : timerPlan.mode === 'fixed_duration' && (timerPlan.fixedMinutes ?? 0) > 0
+          ? 'count_down'
+          : templateMeta.timer.mode;
+    const s = mkSess(resourceName, { ...sessionSeed, timerMode }, { startImmediately: true, timerPlan });
+    setSessions((p) => [...p, s]);
+    setActiveId(s.id);
     if (isMobile) setSessionUi("detail");
-    if (selectedPackage) {
-      showToast("Masa sabit sureli olarak ayarlandi, sure doldugunda bildirileceksiniz.");
-      return;
-    }
-    showToast(`"${resourceName}" acildi, sayac basladi`);
+    showToast(`"${resourceName}" acildi`);
   };
 
   const addSession = () => {
     const n = newName.trim() || `${sessionLabel} ${sessions.length + 1}`;
-    const s = mkSess(n, sessionSeed);
+    const timerPlan = computeDefaultTimerPlan();
+    const timerMode: DemoSession['timerMode'] =
+      timerPlan.mode === 'count_up_slice'
+        ? 'count_up'
+        : timerPlan.mode === 'fixed_duration' && (timerPlan.fixedMinutes ?? 0) > 0
+          ? 'count_down'
+          : templateMeta.timer.mode;
+    const s = mkSess(n, { ...sessionSeed, timerMode }, { timerPlan });
     setSessions((p) => [...p, s]);
     setNewName("");
     setAddingName(false);
@@ -485,7 +485,25 @@ export function DemoApp({
     setActiveId(rem.length ? rem[0].id : null);
     if (isMobile) setSessionUi("list");
   };
-  const sendToPos = async () => { if(!posTarget||!active||active.items.length===0) return; setShowPosModal(false); setSending(true); await new Promise(r=>setTimeout(r,1500)); setSending(false); setSentOk(true); showToast(`${posTarget.name} → gönderildi ✓`); setTimeout(()=>setSentOk(false),3000); };
+  const sendToPos = async () => {
+    if (!active || active.items.length === 0) {
+      showToast("Önce sepete hizmet ekleyin");
+      return;
+    }
+    if (!posTarget) {
+      showToast("Önce POS cihazı seçin");
+      setShowPosModal(true);
+      return;
+    }
+    setShowPosModal(false);
+    setSending(true);
+    await new Promise((r) => setTimeout(r, 1500));
+    setSending(false);
+    setSentOk(true);
+    setPosDemoDone(true);
+    showToast(`${posTarget.name} → gönderildi ✓`);
+    setTimeout(() => setSentOk(false), 3000);
+  };
 
   useEffect(() => {
     const timerId = window.setInterval(() => {
@@ -500,7 +518,6 @@ export function DemoApp({
           if (elapsedMinutes < 1) return session;
 
           if (session.timerPlan.mode === "count_up_slice") {
-            if (!isMeteredSector) return session;
             if (!canAddService || timedServices.length === 0) return session;
             const sliceMinutes = Math.max(1, session.timerPlan.sliceMinutes || 60);
             const passedSlices = Math.floor(elapsedMinutes / sliceMinutes);
@@ -559,7 +576,7 @@ export function DemoApp({
     return () => {
       window.clearInterval(timerId);
     };
-  }, [canAddService, timedServices, isMeteredSector]);
+  }, [canAddService, timedServices]);
 
   const handleHeaderBack = () => {
     if (view === "profile") { setView("sessions"); return; }
@@ -571,7 +588,7 @@ export function DemoApp({
   const showCartPanel = Boolean(active && !isMobile);
 
   return (
-    <div style={{ minHeight: "100dvh", display: "flex", flexDirection: "column", background: C.bg, fontFamily: sans, paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+    <div style={{ minHeight: "100dvh", display: "flex", flexDirection: "column", background: '#f4f3f0', fontFamily: sans, paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -605,10 +622,10 @@ export function DemoApp({
           <div style={{background:C.card,border:`2px solid ${C.dark}`,borderRadius:isMobile?"12px 12px 0 0":12,padding:"clamp(18px, 4vw, 28px)",width:"100%",maxWidth:420,maxHeight:"min(90dvh, 560px)",overflowY:"auto",WebkitOverflowScrolling:"touch",animation:"fadeUp .18s ease",margin:isMobile?0:"auto"}}>
             <div style={{fontSize:10,color:C.light,letterSpacing:1.5,fontFamily:mono,marginBottom:8}}>SURE / HIZMET BITTI</div>
             <div style={{fontSize:22,fontWeight:700,color:C.dark,marginBottom:4}}>{s.name}</div>
-            <div style={{fontSize:13,color:C.mid,marginBottom:16}}>Bu masa icin tanimli sure/hizmet tamamlaniyor. Kapatmak ister misin?</div>
+            <div style={{fontSize:13,color:C.mid,marginBottom:16}}>Tanımlı süre veya paket süresi doldu; uyarı demo mantığıdır. Oturumu kapatmak veya devam etmek için seçin.</div>
             <div style={{display:"flex",flexDirection:isMobile?"column-reverse":"row",gap:8}}>
               <button type="button" onClick={()=>setExpiryAlertId(null)} style={{flex:1,padding:12,fontSize:13,fontWeight:600,borderRadius:6,border:bd,background:"transparent",color:C.dark,cursor:"pointer",width:isMobile?"100%":undefined}}>Devam Et</button>
-              <button type="button" onClick={()=>{setExpiryAlertId(null); setConfirmId(s.id);}} style={{flex:1,padding:12,fontSize:13,fontWeight:700,borderRadius:6,border:"none",background:C.dark,color:"#fff",cursor:"pointer",width:isMobile?"100%":undefined}}>Masa Kapat</button>
+              <button type="button" onClick={()=>{setExpiryAlertId(null); setConfirmId(s.id);}} style={{flex:1,padding:12,fontSize:13,fontWeight:700,borderRadius:6,border:"none",background:C.dark,color:"#fff",cursor:"pointer",width:isMobile?"100%":undefined}}>{closeSessionLabel}</button>
             </div>
           </div>
         </div>); })()}
@@ -630,9 +647,9 @@ export function DemoApp({
         }}
       >
       {/* Header */}
-      <header style={{ height: isMobile ? "auto" : 52, minHeight: 52, borderBottom: bd, display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", justifyContent: "space-between", gap: 8, padding: isMobile ? "4px 16px 8px" : "0 20px", flexShrink: 0, background: C.card, ...(isMobile ? { position: "sticky", top: 0, zIndex: 100 } : {}) }}>
+      <header style={{ height: isMobile ? "auto" : 52, minHeight: 52, borderBottom: bd, display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", justifyContent: "space-between", gap: 8, padding: isMobile ? "4px 16px 8px" : "0 20px", flexShrink: 0, background: 'rgba(255,255,255,.92)', backdropFilter: 'blur(12px)', ...(isMobile ? { position: "sticky", top: 0, zIndex: 100 } : {}) }}>
         <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 6 : 10, flexWrap: "wrap", minWidth: 0, paddingTop: isMobile ? "max(4px, env(safe-area-inset-top))" : 0, paddingBottom: isMobile ? 2 : 0 }}>
-          <button type="button" onClick={handleHeaderBack} style={{ background: "none", border: "none", fontSize: 18, color: C.dark, cursor: "pointer", flexShrink: 0 }} title={view === "profile" ? "Uygulamaya dön" : isMobile && view === "sessions" && sessionUi === "detail" ? "Oturumlara dön" : "Çıkış"}>←</button>
+          <button type="button" onClick={handleHeaderBack} style={{ background: "none", border: "none", fontSize: 18, color: C.dark, cursor: "pointer", flexShrink: 0 }} title={view === "profile" ? "Uygulamaya dön" : isMobile && view === "sessions" && sessionUi === "detail" ? "İşlemlere dön" : "Çıkış"}>←</button>
           {isMobile && view === "sessions" && sessionUi === "detail" && active ? (
             <span style={{ fontSize: 15, fontWeight: 700, color: C.dark, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }} title={active.name}>
               {active.name}
@@ -640,7 +657,7 @@ export function DemoApp({
             </span>
           ) : (
             <>
-              <span style={{ fontSize: isMobile ? 16 : 18, fontWeight: 700, letterSpacing: -0.5, color: C.dark }}>defter</span>
+              <span style={{ fontSize: isMobile ? 16 : 18, fontWeight: 700, letterSpacing: -0.5, color: C.dark }}>vaha.</span>
               <span style={{ fontSize: 9, fontFamily: mono, color: "#fff", background: C.dark, padding: "3px 8px", borderRadius: 4, letterSpacing: 0.5, fontWeight: 600, flexShrink: 0 }}>DEMO</span>
               <span style={{ fontSize: 10, color: C.light, fontFamily: mono, display: isMobile ? "none" : "inline" }}>{hasPos ? "Temel + POS" : "Temel"}</span>
               <span style={{ fontSize: 11, color: C.mid, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: isMobile ? "min(42vw, 140px)" : 280 }} title={businessName}>· {businessName}</span>
@@ -648,12 +665,94 @@ export function DemoApp({
           )}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "nowrap", overflowX: "auto", WebkitOverflowScrolling: "touch", flexShrink: 0, width: isMobile ? "100%" : undefined, maxWidth: "100%", paddingBottom: isMobile ? 2 : 0, scrollbarWidth: "thin" }}>
-          {view !== "profile" && [["sessions", sessionsNavLabel], ["analytics", "ANALİZ"], ["services", "HİZMETLER"]].map(([t, l]) => (
-            <button key={t} type="button" onClick={() => setView(t)} style={{ padding: isMobile ? "5px 8px" : "6px 14px", fontSize: isMobile ? 9 : 11, fontWeight: 600, letterSpacing: isMobile ? 0.3 : 0.5, border: `1px solid ${view === t ? C.dark : "transparent"}`, background: view === t ? C.dark : "transparent", color: view === t ? "#fff" : C.light, borderRadius: 3, cursor: "pointer", transition: "all .15s", flexShrink: 0 }}>{l}</button>
+          {view !== "profile" && [["sessions", sessionsNavLabel], ["analytics", "Özet"], ["services", "Ayarlar"]].map(([t, l]) => (
+            <button key={t} type="button" onClick={() => setView(t)} style={{ padding: isMobile ? "6px 10px" : "7px 14px", fontSize: isMobile ? 11 : 12, fontWeight: 600, letterSpacing: 0.02, border: `1px solid ${view === t ? C.dark : C.border}`, background: view === t ? C.dark : "transparent", color: view === t ? "#fff" : C.mid, borderRadius: 8, cursor: "pointer", transition: "all .15s", flexShrink: 0 }}>{l}</button>
           ))}
           {view === "profile" && <span style={{ fontSize: 11, fontWeight: 600, color: C.dark }}>Profil</span>}
         </div>
       </header>
+
+      {(() => {
+        const showGuideBand = !guideDismissed && (view === "sessions" || view === "analytics");
+        if (!showGuideBand) return null;
+        const hasOpenSession = open.length > 0;
+        const hasServiceInOpen = open.some((s) => s.items.length > 0);
+        const hasClosedAny = closed.length > 0;
+        const analyticsVisited = view === "analytics";
+        const steps = hasPos
+          ? [
+              { label: "İşlem aç", done: hasOpenSession },
+              { label: "Hizmet ekle", done: hasServiceInOpen },
+              { label: "POS'a gönder", done: posDemoDone },
+              { label: closeSessionLabel, done: hasClosedAny },
+              { label: "Analize bak", done: analyticsVisited },
+            ]
+          : [
+              { label: "İşlem aç", done: hasOpenSession },
+              { label: "Hizmet ekle", done: hasServiceInOpen },
+              { label: closeSessionLabel, done: hasClosedAny },
+              { label: "Analize bak", done: analyticsVisited },
+            ];
+        const allGuideDone = steps.every((s) => s.done);
+        return (
+          <div style={{ flexShrink: 0, borderBottom: bd, background: C.accentSoft, padding: "10px 14px" }}>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: 10, fontFamily: mono, letterSpacing: 1, color: C.light, marginBottom: 6 }}>2 DAKİKADA DEMO</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.dark, marginBottom: 8 }}>Önerilen sıra</div>
+                {allGuideDone && (
+                  <div style={{ fontSize: 11, color: C.mid, marginBottom: 8, lineHeight: 1.45 }}>
+                    Tüm adımlar tamam. Pilot veya fiyat için üstteki ← ile çıkın; iletişim formu açılır.
+                  </div>
+                )}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {steps.map((st, idx) => (
+                    <span
+                      key={`${st.label}-${idx}`}
+                      style={{
+                        fontSize: 11,
+                        padding: "5px 8px",
+                        borderRadius: 999,
+                        border: bd,
+                        background: st.done ? C.dark : C.card,
+                        color: st.done ? "#fff" : C.mid,
+                        fontFamily: mono,
+                      }}
+                    >
+                      {st.done ? "✓ " : `${idx + 1}. `}
+                      {st.label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  try {
+                    localStorage.setItem(DEMO_GUIDE_LS, "1");
+                  } catch {
+                    /* ignore */
+                  }
+                  setGuideDismissed(true);
+                }}
+                style={{
+                  flexShrink: 0,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  padding: "6px 10px",
+                  borderRadius: 6,
+                  border: bd,
+                  background: C.card,
+                  color: C.dark,
+                  cursor: "pointer",
+                }}
+              >
+                Anladım, gizle
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
 
@@ -663,7 +762,7 @@ export function DemoApp({
           onChange={setProfile}
           onBack={() => setView("sessions")}
           onSave={() => {
-            onUserChange?.({ email: profile.email, phone: profile.phone, sector: profile.sector });
+            onUserChange?.({ email: profile.email, phone: profile.phone, sector: 'hamam' });
             showToast("Profil kaydedildi");
           }}
         />
@@ -672,15 +771,15 @@ export function DemoApp({
       {/* ANALYTICS */}
       {view==="analytics" && (
         <div style={{ flex: 1, padding: isMobile ? 16 : 24, overflowY: "auto", display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ fontSize: 12, color: C.mid, marginBottom: -6 }}>{SECTORS.find((s) => s.id === sectorId)?.name || "Şablon"} · özet (demo veri + kapalı oturumlar)</div>
+          <div style={{ fontSize: 12, color: C.mid, marginBottom: -6 }}>{SECTORS.find((s) => s.id === sectorId)?.name || "Şablon"} · özet (demo veri + kapalı işlemler)</div>
           <div style={{ fontSize: 11, color: C.light }}>
             Bekleyen odeme: {report.pendingPaymentSessions} · Sifir sure kapanis: {report.zeroDurationClosures} · Manuel kapanis: {report.manualClosures}
           </div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(160px, 1fr))",gap:10}}>
             {[
               { l: "Kapalı ciro", v: `${fmt(closedRevenue)} ₺`, d: `${closed.length} kapalı` },
-              { l: "Açık tahmini", v: `${fmt(openRevenue)} ₺`, d: `${open.length} açık oturum` },
-              { l: "Toplam işlem", v: String(report.totalSessions), d: "oturum kaydı" },
+              { l: "Açık tahmini", v: `${fmt(openRevenue)} ₺`, d: `${open.length} açık işlem` },
+              { l: "Toplam işlem", v: String(report.totalSessions), d: "işlem kaydı" },
               { l: "Ort. süre (kapalı)", v: report.closedSessions ? `${report.averageSessionDurationMinutes} dk` : "—", d: "kapananlar" },
             ].map((k, i) => (
               <div key={i} style={{border:bd,borderRadius:8,padding:16,background:C.card}}>
@@ -746,57 +845,77 @@ export function DemoApp({
                 <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "0 0 8px" }}>
                   <div style={{ padding: "14px 16px 8px" }}>
                     {readyResources.length > 0 && (
-                      <div style={{ border: bd, borderRadius: 8, padding: 10, marginBottom: 10, background: C.card }}>
-                        <div style={{ fontSize: 10, color: C.light, letterSpacing: 1, fontFamily: mono, marginBottom: 7 }}>
-                          HAZIR {resourceTitle} SEC
+                      <div
+                        style={{
+                          marginBottom: 16,
+                          padding: 16,
+                          borderRadius: 16,
+                          background: C.card,
+                          border: bd,
+                          boxShadow: "0 2px 10px rgba(17, 17, 16, 0.06)",
+                        }}
+                      >
+                        <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.12em", color: C.light, marginBottom: 10 }}>
+                          {presetSectionTitle.toUpperCase()}
                         </div>
-                        <div style={{ display: "flex", gap: 8 }}>
-                          <select
-                            value={selectedPresetResource}
-                            onChange={(e) => setSelectedPresetResource(e.target.value)}
-                            style={{ flex: 1, minWidth: 0, padding: "9px 10px", borderRadius: 6, border: bd, background: C.bg, fontFamily: sans, fontSize: 12 }}
-                          >
-                            {readyResources.map((resource) => (
-                              <option key={resource} value={resource}>
-                                {resource}
-                              </option>
-                            ))}
-                          </select>
-                          <button
-                            type="button"
-                            onClick={openPresetSession}
-                            style={{ padding: "9px 12px", borderRadius: 6, border: "none", background: C.dark, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
-                          >
-                            Ac
-                          </button>
+                        <p style={{ fontSize: 13, color: C.mid, lineHeight: 1.45, margin: "0 0 14px", fontWeight: 500 }}>
+                          Bir kabine dokunun; işlem hemen başlar.
+                        </p>
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns:
+                              readyResources.length === 1 ? "1fr" : "repeat(2, minmax(0, 1fr))",
+                            gap: 10,
+                          }}
+                        >
+                          {readyResources.map((name) => (
+                            <button
+                              key={name}
+                              type="button"
+                              onClick={() => openPresetSession(name)}
+                              style={{
+                                width: "100%",
+                                minHeight: 48,
+                                padding: "12px 10px",
+                                borderRadius: 12,
+                                border: bd,
+                                background: C.accentSoft,
+                                fontSize: 14,
+                                fontWeight: 600,
+                                color: C.dark,
+                                cursor: "pointer",
+                                fontFamily: sans,
+                                lineHeight: 1.2,
+                                textAlign: "center",
+                              }}
+                            >
+                              {name}
+                            </button>
+                          ))}
                         </div>
-                        {isMeteredSector && (
-                          <div style={{ display: "grid", gap: 6, marginTop: 8 }}>
-                            <div style={{ fontSize: 11, color: C.mid }}>
-                              Varsayilan dilim: {profile.defaultSliceMinutes} dk (Profil'den degistirilebilir)
-                            </div>
-                            {packageServices.length > 0 && (
-                              <select
-                                value={selectedPackageId}
-                                onChange={(e) => setSelectedPackageId(e.target.value)}
-                                style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: bd, background: C.bg, fontFamily: sans, fontSize: 12 }}
-                              >
-                                <option value="">Saatlik akis (otomatik dilim)</option>
-                                {packageServices.map((service) => (
-                                  <option key={service.id} value={String(service.id)}>
-                                    Sabit paket: {service.name} ({service.dur} dk)
-                                  </option>
-                                ))}
-                              </select>
-                            )}
-                          </div>
-                        )}
+                        <div
+                          style={{
+                            marginTop: 14,
+                            paddingTop: 12,
+                            borderTop: bd,
+                            fontSize: 11,
+                            color: C.light,
+                            lineHeight: 1.4,
+                          }}
+                        >
+                          {templateMeta.timer.mode === "count_up"
+                            ? `Sayaç dilimi: ${defaultSessionMinutes} dk`
+                            : templateMeta.timer.mode === "count_down"
+                              ? `Süre: ${defaultSessionMinutes} dk`
+                              : "Süre: şablona göre"}
+                        </div>
                       </div>
                     )}
-                    <div style={{ fontSize: 10, color: C.light, letterSpacing: 1, marginBottom: 10, fontFamily: mono }}>AÇIK — {open.length}</div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: C.mid, marginBottom: 10 }}>Açık işlemler ({open.length})</div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       {open.length === 0 && !addingName && (
-                        <div style={{ textAlign: "center", padding: "28px 0", color: C.light, fontSize: 13 }}>Açık oturum yok</div>
+                        <div style={{ textAlign: "center", padding: "28px 0", color: C.light, fontSize: 13 }}>Açık işlem yok</div>
                       )}
                       {open.map((s, i) => (
                         <button
@@ -837,11 +956,11 @@ export function DemoApp({
                     <div style={{ marginTop: 10 }}>
                       {!addingName ? (
                         <button type="button" onClick={() => setAddingName(true)} style={{ width: "100%", padding: 12, borderRadius: 8, border: `1px dashed ${C.border}`, background: "transparent", color: C.mid, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                          + Yeni {sessionLabel} Aç
+                          + İsimle yeni işlem
                         </button>
                       ) : (
                         <div style={{ border: `1px solid ${C.dark}`, borderRadius: 8, padding: 14, animation: "fadeUp .15s ease" }}>
-                          <div style={{ fontSize: 10, color: C.light, letterSpacing: 1, marginBottom: 8, fontFamily: mono }}>YENİ OTURUM</div>
+                          <div style={{ fontSize: 10, color: C.light, letterSpacing: 1, marginBottom: 8, fontFamily: mono }}>YENİ İŞLEM</div>
                           <input
                             autoFocus
                             value={newName}
@@ -882,7 +1001,7 @@ export function DemoApp({
                     </div>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 11, fontWeight: 600, color: C.dark, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{profile.email}</div>
-                      <div style={{ fontSize: 10, color: C.light, fontFamily: mono }}>Profil ve ayarlar</div>
+                          <div style={{ fontSize: 10, color: C.light, fontFamily: mono }}>Profil</div>
                     </div>
                   </button>
                 </div>
@@ -916,51 +1035,57 @@ export function DemoApp({
           <div style={{ flex: 1, display: "flex", flexDirection: "row", minHeight: 0, overflow: "hidden" }}>
               <div style={{ width: "clamp(220px, 24vw, 260px)", minHeight: 0, borderRight: bd, display: "flex", flexDirection: "column", flexShrink: 0, background: C.card }}>
                 <div style={{ padding: "12px 16px", borderBottom: bd, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 10, color: C.light, letterSpacing: 1.5, fontFamily: mono }}>AÇIK — {open.length}</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: C.mid }}>Açık işlemler ({open.length})</span>
                   <button type="button" onClick={() => setAddingName((v) => !v)} style={{ fontSize: 18, background: "none", border: "none", color: C.light, cursor: "pointer" }}>+</button>
                 </div>
                 {readyResources.length > 0 && (
-                  <div style={{ padding: "10px 14px", borderBottom: bd, background: C.accentSoft }}>
-                    <div style={{ fontSize: 10, color: C.light, letterSpacing: 1, marginBottom: 7, fontFamily: mono }}>
-                      HAZIR {resourceTitle} SEC
+                  <div style={{ borderBottom: bd, padding: "12px 12px 14px", background: C.card }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", color: C.light, marginBottom: 8 }}>
+                      {presetSectionTitle.toUpperCase()}
                     </div>
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <select
-                        value={selectedPresetResource}
-                        onChange={(e) => setSelectedPresetResource(e.target.value)}
-                        style={{ flex: 1, minWidth: 0, padding: "8px 10px", fontSize: 12, border: bd, borderRadius: 5, outline: "none", fontFamily: sans, background: C.card }}
-                      >
-                        {readyResources.map((resource) => (
-                          <option key={resource} value={resource}>
-                            {resource}
-                          </option>
-                        ))}
-                      </select>
-                      <button type="button" onClick={openPresetSession} style={{ padding: "8px 10px", fontSize: 12, fontWeight: 700, borderRadius: 5, border: "none", background: C.dark, color: "#fff", cursor: "pointer" }}>
-                        Ac
-                      </button>
+                    <p style={{ fontSize: 12, color: C.mid, lineHeight: 1.4, margin: "0 0 10px", fontWeight: 500 }}>
+                      Bir kabine tıklayın; işlem hemen başlar.
+                    </p>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns:
+                          readyResources.length === 1 ? "1fr" : "repeat(2, minmax(0, 1fr))",
+                        gap: 8,
+                      }}
+                    >
+                      {readyResources.map((name) => (
+                        <button
+                          key={name}
+                          type="button"
+                          onClick={() => openPresetSession(name)}
+                          style={{
+                            width: "100%",
+                            minHeight: 40,
+                            padding: "10px 8px",
+                            borderRadius: 10,
+                            border: bd,
+                            background: C.accentSoft,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: C.dark,
+                            cursor: "pointer",
+                            fontFamily: sans,
+                            lineHeight: 1.2,
+                            textAlign: "center",
+                          }}
+                        >
+                          {name}
+                        </button>
+                      ))}
                     </div>
-                    {isMeteredSector && (
-                      <div style={{ display: "grid", gap: 6, marginTop: 8 }}>
-                        <div style={{ fontSize: 11, color: C.mid }}>
-                          Varsayilan dilim: {profile.defaultSliceMinutes} dk (Profil'den degistirilebilir)
-                        </div>
-                        {packageServices.length > 0 && (
-                          <select
-                            value={selectedPackageId}
-                            onChange={(e) => setSelectedPackageId(e.target.value)}
-                            style={{ width: "100%", padding: "8px 10px", fontSize: 12, border: bd, borderRadius: 5, outline: "none", fontFamily: sans, background: C.card }}
-                          >
-                            <option value="">Saatlik akis (otomatik dilim)</option>
-                            {packageServices.map((service) => (
-                              <option key={service.id} value={String(service.id)}>
-                                Sabit paket: {service.name} ({service.dur} dk)
-                              </option>
-                            ))}
-                          </select>
-                        )}
-                      </div>
-                    )}
+                    <div style={{ marginTop: 10, paddingTop: 10, borderTop: bd, fontSize: 10, color: C.light, lineHeight: 1.35 }}>
+                      {templateMeta.timer.mode === "count_up"
+                        ? `Dilim: ${defaultSessionMinutes} dk`
+                        : templateMeta.timer.mode === "count_down"
+                          ? `Süre: ${defaultSessionMinutes} dk`
+                          : "Süre: şablona göre"}
+                    </div>
                   </div>
                 )}
                 {addingName && (
@@ -973,7 +1098,7 @@ export function DemoApp({
                   </div>
                 )}
                 <div style={{ flex: 1, overflowY: "auto" }}>
-                  {open.length === 0 && !addingName && <div style={{ padding: "40px 0", textAlign: "center", color: C.light, fontSize: 12 }}>Açık oturum yok</div>}
+                  {open.length === 0 && !addingName && <div style={{ padding: "40px 0", textAlign: "center", color: C.light, fontSize: 12 }}>Açık işlem yok</div>}
                   {open.map((s) => (
                     <button key={s.id} type="button" className="dr" onClick={() => setActiveId(s.id)} style={{ width: "100%", padding: "12px 16px", border: "none", textAlign: "left", background: activeId === s.id ? C.accentSoft : "transparent", borderBottom: bd, borderLeft: activeId === s.id ? `3px solid ${C.dark}` : "3px solid transparent", cursor: "pointer", transition: "all .1s" }}>
                       <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -1009,7 +1134,7 @@ export function DemoApp({
                     </div>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 11, fontWeight: 600, color: C.dark, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{profile.email}</div>
-                      <div style={{ fontSize: 10, color: C.light, fontFamily: mono }}>Profil ve ayarlar</div>
+                      <div style={{ fontSize: 10, color: C.light, fontFamily: mono }}>Profil</div>
                     </div>
                   </button>
                 </div>
@@ -1049,7 +1174,7 @@ export function DemoApp({
                 </div>
                 <div style={{ flex: 1, overflowY: "auto" }}>
                   {active.items.length === 0 ? (
-                    <div style={{ textAlign: "center", padding: "60px 16px", color: C.light, fontSize: 13 }}>← Soldan hizmet ekleyin</div>
+                    <div style={{ textAlign: "center", padding: "60px 16px", color: C.light, fontSize: 13, lineHeight: 1.5 }}>Soldaki listeden hizmet seçerek sepete ekleyin.</div>
                   ) : (
                     active.items.map((item) => (
                       <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 20px", borderBottom: bd }}>
@@ -1105,7 +1230,7 @@ export function DemoApp({
               </div>
             )}
             {!active && (
-              <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: C.light, fontSize: 13, padding: 16, textAlign: "center" }}>← Bir oturum seçin veya yeni oturum açın</div>
+              <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: C.light, fontSize: 13, padding: 16, textAlign: "center", lineHeight: 1.55 }}>Soldan bir işlem seçin veya yeni işlem başlatın.</div>
             )}
           </div>
         )
@@ -1118,8 +1243,8 @@ export function DemoApp({
 }
 
 export function DemoProfileScreen({ profile, onChange, onSave, onBack }: {
-  profile: { email: string; phone: string; sector: string; password: string; defaultSliceMinutes: number };
-  onChange: (p: { email: string; phone: string; sector: string; password: string; defaultSliceMinutes: number }) => void;
+  profile: { email: string; phone: string; password: string };
+  onChange: (p: { email: string; phone: string; password: string }) => void;
   onSave: () => void;
   onBack: () => void;
 }) {
@@ -1136,7 +1261,7 @@ export function DemoProfileScreen({ profile, onChange, onSave, onBack }: {
       </button>
       <div style={{ fontSize: 10, color: C.light, letterSpacing: 1.2, fontFamily: mono, marginBottom: 8 }}>HESAP</div>
       <h2 style={{ fontSize: 22, fontWeight: 700, color: C.dark, marginBottom: 6 }}>Profil ayarları</h2>
-      <p style={{ fontSize: 13, color: C.mid, marginBottom: 22 }}>E-posta, iletişim ve sektör tercihi (demo).</p>
+      <p style={{ fontSize: 13, color: C.mid, marginBottom: 22 }}>E-posta ve iletişim bilgilerinizi güncelleyin.</p>
       {field("E-posta", (
         <input value={profile.email} onChange={(e) => onChange({ ...profile, email: e.target.value })} style={{ width: "100%", padding: "11px 12px", borderRadius: 8, border: bd, fontSize: 14, outline: "none", background: C.card, fontFamily: sans }} />
       ))}
@@ -1146,26 +1271,10 @@ export function DemoProfileScreen({ profile, onChange, onSave, onBack }: {
       {field("Yeni şifre", (
         <input type="password" value={profile.password} onChange={(e) => onChange({ ...profile, password: e.target.value })} placeholder="••••••••" style={{ width: "100%", padding: "11px 12px", borderRadius: 8, border: bd, fontSize: 14, outline: "none", background: C.card, fontFamily: sans }} />
       ))}
-      {field("Sektör", (
-        <select value={profile.sector} onChange={(e) => onChange({ ...profile, sector: e.target.value })} style={{ width: "100%", padding: "11px 12px", borderRadius: 8, border: bd, fontSize: 14, outline: "none", background: C.card, fontFamily: sans }}>
-          {SECTORS.map((s) => (
-            <option key={s.id} value={s.id}>{s.name}</option>
-          ))}
-        </select>
-      ))}
-      {(profile.sector === "ps" || profile.sector === "net") && field("Saatlik dilim (dk)", (
-        <input
-          value={String(profile.defaultSliceMinutes)}
-          onChange={(e) =>
-            onChange({
-              ...profile,
-              defaultSliceMinutes: Math.max(1, Number.parseInt(e.target.value || "0", 10) || 60),
-            })
-          }
-          placeholder="60"
-          inputMode="numeric"
-          style={{ width: "100%", padding: "11px 12px", borderRadius: 8, border: bd, fontSize: 14, outline: "none", background: C.card, fontFamily: sans }}
-        />
+      {field('Isletme modeli', (
+        <div style={{ padding: '11px 12px', borderRadius: 8, border: bd, fontSize: 14, color: C.dark, background: C.bg }}>
+          Hamam · Sauna · Spa (sabit)
+        </div>
       ))}
       <button type="button" onClick={onSave} className="cta" style={{ width: "100%", marginTop: 8, padding: 13, border: "none", borderRadius: 8, background: C.dark, color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>
         Kaydet

@@ -1,3 +1,7 @@
+/**
+ * @deprecated Vaha landing şu an yalnızca hamam / sauna / spa dikeyine odaklıdır.
+ * Bu bileşen kullanılmıyor; PlayStation / internet cafe segmenti MVP dışında bırakıldı.
+ */
 import { C, bd, mono, sans } from '@/shared/constants/demo.constants';
 
 export function LandingMeteredBanner() {

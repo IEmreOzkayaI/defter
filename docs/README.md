@@ -1,18 +1,17 @@
-# Defter Docs
+# Vaha docs
 
-Bu klasor, urun stratejisi ve teknik yol haritasinin karar kayitlarini tutar.
+Bu klasor, Vaha (hamam / sauna / spa otomasyonu) icin urun ve teknik karar kayitlarini tutar.
 
 ## Dokumanlar
 
-- `docs/00-product-strategy.md`: Urun stratejisi, hedef segment ve MVP sinirlari.
-- `docs/01-technical-direction.md`: Core engine, template yapisi, veri ve mimari kararlar.
-- `docs/02-rollout-plan.md`: Fazli cikis plani ve olculebilir hedefler.
-- `docs/03-execution-checklist.md`: Uygulamaya baslamak icin adim adim is listesi.
-- `docs/04-pilot-feedback-template.md`: Pilot gorusmelerde standart geri bildirim toplama formati.
-- `docs/05-product-scope-and-roadmap.md`: Urun tanimi (kagit adisyon), sektor listesi, golden rule, faz bazli roadmap ve bilincli olarak disarida birakilanlar.
+- `docs/00-product-strategy.md`: Pozisyonlama, hedef musteri, MVP sinirlari.
+- `docs/01-technical-direction.md`: Core model, template yaklasimi, guardrails.
+- `docs/02-rollout-plan.md`: Fazli cikis ve olcum.
+- `docs/03-execution-checklist.md`: Uygulama sirasi (repo ici).
+- `docs/04-pilot-feedback-template.md`: Pilot gorusme notlari.
+- `docs/05-product-scope-and-roadmap.md`: Kapsam, disarida birakilanlar, yol haritasi.
 
 ## Calisma sekli
 
-- Her dokuman bir "single source of truth" olarak guncellenir.
-- Yeni kararlar once ilgili dokumana yazilir, sonra implementasyona gecilir.
-- Kapsam degisimi olursa once MVP disi olarak etiketlenir, sonra roadmap'e eklenir.
+- Once dokumani guncelle, sonra kodu hizala.
+- Kapsam genislemesi once "MVP disi" etiketi ile yazilir.

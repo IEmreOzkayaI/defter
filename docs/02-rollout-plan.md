@@ -1,46 +1,27 @@
-# Rollout Plan
+# Rollout plan (Vaha)
 
-Plan, ürün tanımı ve sektör roadmap’i ile hizalıdır (`docs/00-product-strategy.md`, `docs/05-product-scope-and-roadmap.md`).
+## Faz A — Dogru mesaj + dogru demo
 
-## Faz 0 — Hazırlık
+- Landing ve SEO icerigi: hamam / sauna / spa tek dikey.
+- Demo onboarding sade: isletme bilgisi + hazir spa sablonu.
+- Temel + POS demo ayrimi korunur.
 
-- Kapsam ve “dışarıda bırakılanlar” netliği (randevu-first, CRM).
-- Şablon registry ve demo sektör seçimi Faz 1 ile uyumlu.
+Cikis: kullanici 5 dakikada "ne oldugunu" anlar.
 
-Teslim: onaylı doküman seti; Faz 1 şablonları demoda seçilebilir.
+## Faz B — Pilot operasyon
 
-## Faz 1 — Launch (çekirdek + Faz 1 sektörleri)
+- Gercek isletme verisi ile gunluk kullanim
+- Paket ve sure uyari davranisinin gozlemlenmesi
+- POS entegrasyonu icin tek cihaz pilotu
 
-**Sektörler:** kafe/restoran, PlayStation cafe, internet cafe, hamam/SPA, bilardo/langırt.
+## Faz C — Online rezervasyon
 
-**İş:**
+- Musteri tarafinda slot / paket secimi
+- Doluluk ve iptal kurallari
+- Admin takvim
 
-- Oturum + sepet + süre çekirdeği stabil.
-- Her şablonda: aç → kalemler → tahsilat → kapat.
-- PS/net için dilimli sayaç ve sabit paket (ürün kapsamına göre).
-- Landing ve demo mesajı: “kağıt adisyonun dijitalı”.
+## Olcum
 
-**Çıkış kriteri:** Faz 1 şablonlarında uçtan uca akış sorunsuz; pilot için anlatılabilir teklif.
-
-## Faz 2 — Genişleme
-
-**Hedef sektörler:** oto yıkama, halı saha, otopark.
-
-- Şablon ve hazır kaynak preset’leri.
-- Pilot geri bildirim döngüsü.
-
-## Faz 3 — Operasyonel derinlik
-
-**Hedef sektörler:** kuru temizleme, teknik servis.
-
-- “Teslim / durum” ihtiyaçlarına uygun liste ve akışlar (MVP sınırları içinde).
-
-## Sonraki (post-MVP)
-
-- POS addon olgunlaştırma.
-- Offline-lite tasarım.
-- Niş sektör şablonları (backlog sırası).
-
-## Ölçüm
-
-- Faz 1’de onboarding tamamlama, oturum kapatma başarısı, haftalık aktif demo kullanımı.
+- Demo tamamlama orani
+- Pilot basina gunluk kapanan oturum sayisi
+- Tahsilat hatasi / eksik kayit sikayeti

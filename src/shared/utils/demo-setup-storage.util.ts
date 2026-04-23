@@ -1,6 +1,6 @@
 import type { DemoMode, DemoSetupPayload } from '@/shared/types/demo.types';
 
-const KEY = 'defter_demo_setup_v1';
+const KEY = 'vaha_demo_setup_v1';
 
 export function persistDemoSetup(setup: DemoSetupPayload, mode: DemoMode): void {
   try {

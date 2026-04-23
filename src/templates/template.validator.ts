@@ -11,7 +11,6 @@ export function validateTemplate(template: SectorTemplate): TemplateValidationRe
 
   if (!template.id.trim()) errors.push('Template id zorunlu.');
   if (!template.resourceName.trim()) errors.push('Template resourceName zorunlu.');
-  if (template.resourcePreset.length === 0) errors.push('En az bir hazir kaynak gerekli.');
   if (template.categories.length === 0) errors.push('En az bir kategori gerekli.');
   if (template.services.length === 0) errors.push('En az bir hizmet gerekli.');
 

@@ -19,9 +19,11 @@ export BACKEND_PROXY_TARGET
 
 # Boş bırak: tarayıcı /api kullanır (nginx proxy). Dolu: doğrudan o origin’e fetch (CORS gerekir).
 cat > /usr/share/nginx/html/env-config.js <<EOF
-window.__DEFTER_RUNTIME_CONFIG__ = {
+window.__VAHA_RUNTIME_CONFIG__ = {
   VITE_BACKEND_BASE_URL: "${VITE_BACKEND_BASE_URL:-}"
 };
+// Geriye dönük uyumluluk (eski imajlar / önbellek)
+window.__DEFTER_RUNTIME_CONFIG__ = window.__VAHA_RUNTIME_CONFIG__;
 EOF
 
 envsubst '${IFRAME_ALLOWED_ORIGIN} ${NGINX_PORT} ${BACKEND_PROXY_TARGET}' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf
