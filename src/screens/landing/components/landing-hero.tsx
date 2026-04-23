@@ -63,14 +63,14 @@ export function LandingHero({ onOpenContact, onOpenDemo }: Props) {
               <button
                 type="button"
                 onClick={onOpenDemo}
-                className="inline-flex min-h-[48px] w-full items-center justify-center rounded-xl bg-stone-900 px-8 text-[15px] font-semibold text-white shadow-lg shadow-stone-900/20 transition hover:bg-stone-800 sm:w-auto"
+                className="inline-flex min-h-[48px] w-full items-center justify-center rounded-lg bg-stone-900 px-8 text-[15px] font-semibold text-white shadow-lg shadow-stone-900/20 transition hover:bg-stone-800 sm:w-auto"
               >
                 Hemen başla
               </button>
               <button
                 type="button"
                 onClick={() => onOpenContact('start')}
-                className="inline-flex min-h-[48px] w-full items-center justify-center rounded-xl border border-stone-300/90 bg-white/90 px-8 text-[15px] font-semibold text-stone-800 shadow-sm backdrop-blur-sm transition hover:border-stone-400 hover:bg-white sm:w-auto"
+                className="inline-flex min-h-[48px] w-full items-center justify-center rounded-lg border border-stone-300/90 bg-white/90 px-8 text-[15px] font-semibold text-stone-800 shadow-sm backdrop-blur-sm transition hover:border-stone-400 hover:bg-white sm:w-auto"
               >
                 Hemen iletişime geç
               </button>
@@ -78,7 +78,7 @@ export function LandingHero({ onOpenContact, onOpenDemo }: Props) {
             <button
               type="button"
               onClick={() => onOpenContact('walkthrough')}
-              className="mt-2 w-full rounded-xl border border-dashed border-stone-300/90 bg-stone-50/80 py-3.5 text-sm font-semibold text-stone-600 transition hover:border-stone-400 hover:bg-stone-100/80 sm:mt-3 sm:w-auto sm:px-6"
+              className="mt-2 w-full rounded-lg border border-dashed border-stone-300/90 bg-stone-50/80 py-3.5 text-sm font-semibold text-stone-600 transition hover:border-stone-400 hover:bg-stone-100/80 sm:mt-3 sm:w-auto sm:px-6"
             >
               Bana özel 10 dk canlı anlatım
             </button>

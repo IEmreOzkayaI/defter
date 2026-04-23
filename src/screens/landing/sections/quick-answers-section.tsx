@@ -26,7 +26,7 @@ export function QuickAnswersSection({ onOpenContact }: Props) {
           <button
             type="button"
             onClick={() => onOpenContact('walkthrough')}
-            className="w-full rounded-xl bg-stone-900 py-3.5 text-sm font-semibold text-white shadow-md transition hover:bg-stone-800"
+            className="w-full rounded-lg bg-stone-900 py-3.5 text-sm font-semibold text-white shadow-md transition hover:bg-stone-800"
           >
             Bana özel 10 dk canlı anlatım
           </button>

@@ -110,7 +110,7 @@ export function LandingContactModal({ onClose, intent }: Props) {
                   .then(() => setSent(true))
                   .finally(() => setSending(false));
               }}
-              className="mt-6 w-full rounded-xl py-3.5 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-6 w-full rounded-lg py-3.5 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50"
               style={{ background: ok ? C.dark : C.border, color: ok ? '#fff' : C.light }}
             >
               {sending ? 'Gönderiliyor…' : isWalkthrough ? 'Anlatım talep et' : 'Gönder'}
@@ -133,7 +133,7 @@ export function LandingContactModal({ onClose, intent }: Props) {
             <button
               type="button"
               onClick={onClose}
-              className="mt-8 rounded-xl border px-8 py-2.5 text-sm font-semibold text-stone-800 transition hover:bg-stone-50"
+              className="mt-8 rounded-lg border px-8 py-2.5 text-sm font-semibold text-stone-800 transition hover:bg-stone-50"
               style={{ borderColor: C.border }}
             >
               Kapat

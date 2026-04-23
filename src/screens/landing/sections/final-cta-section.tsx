@@ -23,21 +23,21 @@ export function FinalCtaSection({ onOpenContact, onOpenDemo }: Props) {
           <button
             type="button"
             onClick={onOpenDemo}
-            className="w-full min-w-[200px] rounded-xl bg-stone-900 px-10 py-4 text-base font-semibold text-white shadow-lg shadow-stone-900/20 transition hover:bg-stone-800 sm:w-auto"
+            className="w-full min-w-[200px] rounded-lg bg-stone-900 px-10 py-4 text-base font-semibold text-white shadow-lg shadow-stone-900/20 transition hover:bg-stone-800 sm:w-auto"
           >
             Hemen Başla
           </button>
           <button
             type="button"
             onClick={() => onOpenContact('start')}
-            className="w-full min-w-[200px] rounded-xl border border-stone-300/90 bg-white/90 px-10 py-4 text-base font-semibold text-stone-800 shadow-sm backdrop-blur-sm transition hover:border-stone-400 hover:bg-white sm:w-auto"
+            className="w-full min-w-[200px] rounded-lg border border-stone-300/90 bg-white/90 px-10 py-4 text-base font-semibold text-stone-800 shadow-sm backdrop-blur-sm transition hover:border-stone-400 hover:bg-white sm:w-auto"
           >
             Hemen İletişime Geç
           </button>
           <button
             type="button"
             onClick={() => onOpenContact('walkthrough')}
-            className="w-full min-w-[200px] rounded-xl border border-dashed border-stone-300/90 bg-stone-50/90 px-8 py-4 text-[15px] font-semibold text-stone-600 transition hover:bg-stone-100/90 sm:w-auto"
+            className="w-full min-w-[200px] rounded-lg border border-dashed border-stone-300/90 bg-stone-50/90 px-8 py-4 text-[15px] font-semibold text-stone-600 transition hover:bg-stone-100/90 sm:w-auto"
           >
             10 dk canlı anlatım
           </button>

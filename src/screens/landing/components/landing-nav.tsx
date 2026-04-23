@@ -17,20 +17,20 @@ export function LandingNav({ scrolled, onOpenDemo, onOpenContact }: Props) {
     >
       <LandingContainer className="flex h-16 items-center justify-between gap-4">
         <a href="#hero" className="group flex shrink-0 items-center no-underline">
-          <span className="text-xl font-bold tracking-tight text-stone-900 transition-colors group-hover:text-stone-700">vaha.</span>
+          <span className="text-[1.5rem] font-bold tracking-tight text-stone-900 transition-colors group-hover:text-stone-700">vaha.</span>
         </a>
         <nav className="flex items-center gap-2 sm:gap-3" aria-label="Ana eylemler">
           <button
             type="button"
             onClick={onOpenDemo}
-            className="rounded-full border border-stone-900/15 bg-white/70 px-3 py-2 text-[13px] font-semibold text-stone-800 shadow-sm backdrop-blur-sm transition hover:border-stone-900/25 hover:bg-white sm:px-4"
+            className="rounded-lg border border-stone-900/15 bg-white/70 px-3 py-2 text-[13px] font-semibold text-stone-800 shadow-sm backdrop-blur-sm transition hover:border-stone-900/25 hover:bg-white sm:px-4"
           >
             Hemen Başla
           </button>
           <button
             type="button"
             onClick={onOpenContact}
-            className="rounded-full bg-stone-900 px-3 py-2 text-[13px] font-semibold text-white shadow-md shadow-stone-900/15 transition hover:bg-stone-800 sm:px-4"
+            className="rounded-lg bg-stone-900 px-3 py-2 text-[13px] font-semibold text-white shadow-md shadow-stone-900/15 transition hover:bg-stone-800 sm:px-4"
           >
             Hemen İletişime Geç
           </button>

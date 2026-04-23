@@ -83,7 +83,7 @@ export default function LandingScreen() {
       <button
         type="button"
         onClick={() => openContact('start')}
-        className="fixed bottom-5 right-5 z-[120] rounded-full bg-stone-900 px-4 py-2.5 text-[13px] font-semibold text-white shadow-lg shadow-stone-900/25 transition hover:bg-stone-800 sm:bottom-6 sm:right-6"
+        className="fixed bottom-5 right-5 z-[120] rounded-lg bg-stone-900 px-4 py-2.5 text-[13px] font-semibold text-white shadow-lg shadow-stone-900/25 transition hover:bg-stone-800 sm:bottom-6 sm:right-6"
       >
         Hemen İletişime Geç
       </button>

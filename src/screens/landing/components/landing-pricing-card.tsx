@@ -50,7 +50,7 @@ export function LandingPricingCard({
       <button
         type="button"
         onClick={onAction}
-        className={`mt-8 w-full rounded-xl py-3.5 text-sm font-semibold transition ${
+        className={`mt-8 w-full rounded-lg py-3.5 text-sm font-semibold transition ${
           highlight ? 'bg-stone-900 text-white hover:bg-stone-800' : 'bg-stone-100 text-stone-900 hover:bg-stone-200'
         }`}
       >

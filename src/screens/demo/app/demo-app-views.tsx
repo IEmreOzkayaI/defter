@@ -657,7 +657,7 @@ export function DemoApp({
             </span>
           ) : (
             <>
-              <span style={{ fontSize: isMobile ? 16 : 18, fontWeight: 700, letterSpacing: -0.5, color: C.dark }}>vaha.</span>
+              <span style={{ fontSize: isMobile ? 17 : 19, fontWeight: 700, letterSpacing: -0.5, color: C.dark }}>vaha.</span>
               <span style={{ fontSize: 9, fontFamily: mono, color: "#fff", background: C.dark, padding: "3px 8px", borderRadius: 4, letterSpacing: 0.5, fontWeight: 600, flexShrink: 0 }}>DEMO</span>
               <span style={{ fontSize: 10, color: C.light, fontFamily: mono, display: isMobile ? "none" : "inline" }}>{hasPos ? "Temel + POS" : "Temel"}</span>
               <span style={{ fontSize: 11, color: C.mid, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: isMobile ? "min(42vw, 140px)" : 280 }} title={businessName}>· {businessName}</span>

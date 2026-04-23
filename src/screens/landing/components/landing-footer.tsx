@@ -17,7 +17,7 @@ export function LandingFooter() {
       <LandingContainer>
         <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-baseline gap-3">
-            <span className="text-lg font-bold tracking-tight text-stone-900">vaha.</span>
+            <span className="text-xl font-bold tracking-tight text-stone-900">vaha.</span>
             <span className="text-xs text-stone-400">© 2026</span>
           </div>
           <nav aria-label="Sayfa bölümleri" className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-stone-500">
